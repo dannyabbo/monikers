@@ -1,0 +1,1121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2433b8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Monikers">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style id="standalone">
+  html { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; }
+  [hidden] { display: none !important; }
+</style>
+<!--ARTIFACT-START-->
+<title>Monikers at Home</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Figtree:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one-screen phone app; a felt-blue game table, white cards on top, actions in thumb reach at the bottom. */
+:root {
+  --bg: #e9ecfb;
+  --surface: #ffffff;
+  --surface-2: #dde2f8;
+  --ink: #15183a;
+  --muted: #5a5f86;
+  --line: #c5cbee;
+  --accent: #2433b8;
+  --accent-ink: #ffffff;
+  --sun: #ffc93c;
+  --sun-ink: #2a2100;
+  --card: #fffdf8;
+  --card-ink: #15183a;
+  --card-muted: #5b5d74;
+  --good: #1f9d5c;
+  --bad: #d7414a;
+  --p1: #1f9d5c; --p2: #2b74e0; --p3: #8a45d6; --p4: #e0484f;
+  --t0: #2b5bea; --t1: #e8a400; --t2: #d93d6e; --t3: #149e8a;
+  --shadow: 0 1px 0 rgba(21,24,58,.06), 0 10px 30px -12px rgba(21,24,58,.35);
+  --display: "Bagel Fat One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10122b; --surface: #1b1e42; --surface-2: #262a57; --ink: #eef0ff; --muted: #a3a8d6; --line: #343a72;
+    --accent: #6f7dff; --accent-ink: #0c0e26; --sun: #ffcf4d; --sun-ink: #2a2100;
+    --card: #fffaf0; --card-ink: #15183a; --card-muted: #5b5d74;
+    --good: #35c27a; --bad: #ff6970;
+    --shadow: 0 1px 0 rgba(0,0,0,.3), 0 14px 34px -14px rgba(0,0,0,.8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10122b; --surface: #1b1e42; --surface-2: #262a57; --ink: #eef0ff; --muted: #a3a8d6; --line: #343a72;
+  --accent: #6f7dff; --accent-ink: #0c0e26; --sun: #ffcf4d; --sun-ink: #2a2100;
+  --card: #fffaf0; --card-ink: #15183a; --card-muted: #5b5d74;
+  --good: #35c27a; --bad: #ff6970;
+  --shadow: 0 1px 0 rgba(0,0,0,.3), 0 14px 34px -14px rgba(0,0,0,.8);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+#app {
+  height: 100%; display: flex; flex-direction: column; max-width: 560px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 16px;
+}
+.screen { flex: 1; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.scroll { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 16px; padding-bottom: 8px; margin-inline: -4px; padding-inline: 4px; }
+.footer { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; gap: 10px; align-items: center; }
+.row > * { min-width: 0; }
+.grow { flex: 1; }
+
+h1, h2, h3 { font-family: var(--display); font-weight: 400; margin: 0; line-height: 1.05; text-wrap: balance; letter-spacing: .005em; }
+h1 { font-size: clamp(44px, 14vw, 68px); }
+h2 { font-size: 30px; }
+h3 { font-size: 20px; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+.eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 54px; padding: 0 20px; border-radius: 16px; font-weight: 800; font-size: 18px;
+  background: var(--surface); color: var(--ink); border: 2px solid var(--line);
+  transition: transform .08s ease;
+}
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.sun { background: var(--sun); color: var(--sun-ink); border-color: var(--sun); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); min-height: 44px; font-size: 16px; }
+.btn.block { width: 100%; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+.iconbtn { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: var(--muted); font-size: 22px; font-weight: 800; }
+.iconbtn:active { background: var(--surface-2); }
+
+.topbar { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.topbar .title { flex: 1; font-weight: 800; font-size: 15px; color: var(--muted); text-align: center; }
+
+.panel { background: var(--surface); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--line); }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field > label, .field > .label { font-weight: 700; font-size: 15px; }
+.hint { font-size: 13px; color: var(--muted); }
+
+input[type="text"] {
+  font: inherit; width: 100%; min-height: 48px; padding: 0 14px; border-radius: 12px;
+  border: 2px solid var(--line); background: var(--bg); color: var(--ink); font-weight: 600;
+}
+.seg { display: flex; background: var(--surface-2); border-radius: 14px; padding: 4px; gap: 4px; }
+.seg button { flex: 1; min-height: 42px; border-radius: 10px; font-weight: 700; font-size: 15px; color: var(--muted); padding: 0 6px; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.stepper { display: flex; align-items: center; gap: 4px; background: var(--surface-2); border-radius: 14px; padding: 4px; }
+.stepper button { width: 42px; height: 42px; border-radius: 10px; font-size: 22px; font-weight: 800; background: var(--surface); }
+.stepper output { min-width: 44px; text-align: center; font-weight: 800; font-size: 20px; font-variant-numeric: tabular-nums; }
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setrow .label { font-weight: 700; }
+.toggle { width: 56px; height: 34px; border-radius: 99px; background: var(--line); position: relative; flex: none; }
+.toggle::after { content: ""; position: absolute; top: 4px; left: 4px; width: 26px; height: 26px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.toggle[aria-pressed="true"] { background: var(--good); }
+.toggle[aria-pressed="true"]::after { transform: translateX(22px); }
+
+.teamdot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 4px 8px; border-radius: 99px; font-weight: 800; font-size: 14px; background: var(--surface); border: 1px solid var(--line); }
+
+/* Home */
+.home-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 18px; padding-top: 12px; }
+.fan { position: relative; height: 190px; margin: 0 auto 6px; width: 320px; max-width: 100%; }
+.fan .mini { position: absolute; left: 50%; top: 10px; width: 116px; height: 160px; margin-left: -58px; border-radius: 14px; background: var(--card); color: var(--card-ink); box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; justify-content: space-between; border-top: 10px solid var(--p1); }
+.fan .mini b { font-family: var(--display); font-weight: 400; font-size: 18px; line-height: 1.02; }
+.fan .mini span { font-size: 11px; color: var(--card-muted); font-weight: 600; }
+.fan .mini:nth-child(1) { transform: translateX(-96px) rotate(-12deg); border-top-color: var(--p3); }
+.fan .mini:nth-child(2) { transform: rotate(-2deg) translateY(-8px); border-top-color: var(--p2); }
+.fan .mini:nth-child(3) { transform: translateX(96px) rotate(10deg); border-top-color: var(--p4); }
+.tagline { font-size: 18px; color: var(--muted); max-width: 30ch; }
+.rounds-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rounds-mini div { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
+.rounds-mini b { display: block; font-family: var(--display); font-weight: 400; font-size: 26px; color: var(--accent); line-height: 1; }
+.rounds-mini span { font-size: 13px; font-weight: 700; }
+.credit { font-size: 12px; color: var(--muted); text-align: center; }
+
+/* The card */
+.card {
+  background: var(--card); color: var(--card-ink); border-radius: 22px; box-shadow: var(--shadow);
+  padding: 22px 22px 20px; display: flex; flex-direction: column; gap: 14px; position: relative; overflow: hidden;
+  border-top: 14px solid var(--pc, var(--p1));
+}
+.card .cname { font-family: var(--display); font-weight: 400; font-size: clamp(32px, 10vw, 46px); line-height: 1.02; text-wrap: balance; overflow-wrap: anywhere; padding-right: 54px; }
+.card .cdesc { font-size: 17px; line-height: 1.4; color: var(--card-muted); font-weight: 500; }
+.card .pts { position: absolute; top: 14px; right: 14px; width: 46px; height: 46px; border-radius: 50%; background: var(--pc); color: #fff; display: grid; place-items: center; font-family: var(--display); font-size: 24px; line-height: 1; }
+.card.enter { animation: deal .22s cubic-bezier(.2,.9,.3,1.2); }
+.card.custom .cdesc { font-style: italic; }
+@keyframes deal { from { transform: translateY(18px) rotate(-2deg) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .card.enter { animation: none; } .btn:active { transform: none; } }
+
+/* Draft */
+.draft-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dcard {
+  text-align: left; background: var(--card); color: var(--card-ink); border-radius: 14px; padding: 12px 12px 36px; min-height: 128px;
+  display: flex; flex-direction: column; gap: 6px; border: 3px solid transparent; border-top: 8px solid var(--pc); position: relative; box-shadow: var(--shadow);
+}
+.dcard b { font-family: var(--display); font-weight: 400; font-size: 19px; line-height: 1.05; padding-right: 22px; overflow-wrap: anywhere; }
+.dcard span { font-size: 12.5px; color: var(--card-muted); line-height: 1.3; font-weight: 500; }
+.dcard i { position: absolute; top: 6px; right: 8px; font-style: normal; font-weight: 800; font-size: 14px; color: var(--pc); }
+.dcard[aria-pressed="true"] { border-color: var(--accent); outline: 3px solid var(--accent); outline-offset: -1px; }
+.dcard[aria-pressed="true"]::after { content: "✓"; position: absolute; bottom: 8px; right: 10px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 15px; }
+.counter { font-variant-numeric: tabular-nums; font-weight: 800; }
+
+/* Pass the phone */
+.pass { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 14px; }
+.pass .big { font-family: var(--display); font-size: clamp(40px, 13vw, 60px); line-height: 1; }
+.pass .who { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; }
+.rule-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; width: 100%; text-align: left; display: flex; gap: 14px; align-items: flex-start; }
+.rule-card .num { font-family: var(--display); font-size: 44px; line-height: .9; color: var(--accent); flex: none; width: 36px; text-align: center; }
+.rule-card h3 { margin-bottom: 4px; }
+
+/* Turn */
+.turn-head { display: flex; align-items: center; gap: 8px; }
+.timer { position: relative; height: 56px; border-radius: 16px; background: var(--surface-2); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.timer .fill { position: absolute; inset: 0 auto 0 0; width: 100%; background: var(--tc, var(--accent)); opacity: .9; transform-origin: left; }
+.timer .num { position: relative; font-family: var(--display); font-size: 34px; color: var(--ink); font-variant-numeric: tabular-nums; mix-blend-mode: normal; }
+.timer.low .fill { background: var(--bad); }
+.timer.low .num { animation: pulse 1s infinite; }
+@keyframes pulse { 50% { transform: scale(1.12); } }
+.stage { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+.turn-meta { display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.turn-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; }
+.turn-actions .btn { min-height: 76px; font-size: 22px; border-radius: 20px; }
+.btn.got { background: var(--good); border-color: var(--good); color: #fff; }
+
+/* Overlay */
+.overlay { position: fixed; inset: 0; background: rgba(10,12,35,.55); display: flex; align-items: flex-end; justify-content: center; z-index: 20;
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.sheet { background: var(--surface); color: var(--ink); width: 100%; max-width: 520px; border-radius: 22px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }
+
+/* Review + scores */
+.list { display: flex; flex-direction: column; gap: 8px; }
+.li { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.li .nm { flex: 1; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.li.off .nm { text-decoration: line-through; color: var(--muted); }
+.chip { flex: none; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 99px; display: grid; place-items: center; font-weight: 800; font-size: 14px; color: #fff; background: var(--pc, var(--accent)); }
+.li button.small-btn { flex: none; min-height: 36px; padding: 0 12px; border-radius: 10px; background: var(--surface-2); font-weight: 700; font-size: 14px; }
+.scoretable { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.scoretable th, .scoretable td { padding: 10px 6px; text-align: right; border-bottom: 1px solid var(--line); }
+.scoretable th:first-child, .scoretable td:first-child { text-align: left; }
+.scoretable th { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.scoretable td.total { font-family: var(--display); font-size: 22px; }
+.scoretable .tn { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+.tablewrap { overflow-x: auto; }
+.winner { text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; padding: 10px 0; }
+.winner .crown { font-family: var(--display); font-size: clamp(42px, 13vw, 64px); line-height: 1; }
+.bigscore { font-family: var(--display); font-size: 64px; line-height: 1; font-variant-numeric: tabular-nums; }
+
+.rules h3 { margin-top: 6px; }
+.rules p, .rules li { color: var(--ink); }
+.rules ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+
+.custom-list { display: flex; flex-direction: column; gap: 8px; }
+</style>
+<!--ARTIFACT-HEAD-END-->
+</head>
+<body>
+<!--ARTIFACT-BODY-START-->
+<div id="app"></div>
+<div id="overlay-root"></div>
+
+<script>
+/* ---------- Cards (original text; points 1 = easy, 4 = hard) ---------- */
+const CARD_TEXT = `
+1|Taylor Swift|Pop superstar with a song about every ex and a record-breaking stadium tour.
+1|Barack Obama|44th U.S. president. "Yes we can." Famously good at basketball and dad jokes.
+1|Abraham Lincoln|Tall president with a stovepipe hat and a beard, on the penny and the five.
+1|Albert Einstein|Wild-haired physicist. E = mc². Shorthand for "genius."
+1|The Mona Lisa|Leonardo's portrait with the mysterious smile, behind glass at the Louvre.
+1|Santa Claus|Jolly man in red who slides down chimneys on Christmas Eve.
+1|The Tooth Fairy|Swaps the tooth under your pillow for cash.
+1|Mickey Mouse|Disney's big-eared mascot in red shorts and white gloves.
+1|Darth Vader|Heavy-breathing Sith lord in black armor. "I am your father."
+1|Harry Potter|Boy wizard with round glasses and a lightning-bolt scar.
+1|Shrek|Grumpy green ogre who just wants people out of his swamp.
+1|Elvis Presley|The King of Rock and Roll. Swiveling hips, white jumpsuit, Graceland.
+1|Michael Jordan|Basketball's GOAT for many. Six rings with the Bulls, Air Jordans.
+1|Oprah Winfrey|Talk show queen. "You get a car! You get a car!"
+1|Batman|Billionaire Bruce Wayne fights crime in Gotham dressed as a bat.
+1|Spider-Man|Bitten by a radioactive spider, swings around New York on webs.
+1|SpongeBob SquarePants|Square yellow sea sponge who flips Krabby Patties in Bikini Bottom.
+1|Cleopatra|Last pharaoh of Egypt. Famous for her romances with Caesar and Mark Antony.
+1|Dracula|Transylvanian count who sleeps in a coffin and drinks blood.
+1|Frankenstein's Monster|Stitched-together creature with bolts in its neck. "It's alive!"
+1|Marilyn Monroe|Platinum blonde movie icon; white dress blowing over a subway grate.
+1|Cinderella|Lost a glass slipper at midnight leaving the royal ball.
+1|Sherlock Holmes|Pipe-smoking detective of 221B Baker Street. "Elementary."
+1|Pikachu|Yellow electric Pokémon that says its own name.
+1|Mario|Mustachioed plumber in a red cap who stomps on Goombas.
+1|LeBron James|Basketball superstar from Akron. "King James."
+1|Beyoncé|Queen Bey. "Single Ladies," Lemonade, Destiny's Child.
+1|Lady Gaga|Pop star famous for wild outfits, including a dress made of meat.
+1|The Pope|Leader of the Catholic Church. Rides in the Popemobile.
+1|Bigfoot|Huge hairy creature said to roam the forests of the Pacific Northwest.
+1|Godzilla|Giant radioactive lizard who stomps on Tokyo.
+1|Yoda|Small green Jedi master. "Do or do not. There is no try."
+1|William Shakespeare|"To be or not to be." Wrote Romeo and Juliet and Hamlet.
+1|Michael Jackson|King of Pop. Moonwalk, one sparkly glove, "Thriller."
+1|The Beatles|Fab Four from Liverpool: John, Paul, George and Ringo.
+1|Kermit the Frog|Green Muppet who sings "Rainbow Connection." It's not easy being green.
+1|Barbie|Iconic fashion doll with a Dreamhouse, a pink convertible and Ken.
+1|The Grinch|Green grump who tried to steal Christmas. Heart was two sizes too small.
+1|Dolly Parton|Country legend. "9 to 5," "Jolene," big hair, Dollywood.
+1|Tom Hanks|Beloved actor. Forrest Gump, Toy Story's Woody, talked to a volleyball named Wilson.
+1|Wonder Woman|Amazon warrior princess with a lasso of truth and bulletproof bracelets.
+1|A Zombie|Undead walker with arms out, moaning for brains.
+1|A Pirate|Eye patch, parrot, peg leg. "Arrr, matey!"
+1|A Mermaid|Half woman, half fish. Lives under the sea.
+1|A Cowboy|Hat, boots, lasso, and a horse. "Yeehaw!"
+1|Superman|Man of Steel from Krypton. Disguises himself with glasses as Clark Kent.
+1|The Easter Bunny|Hops around hiding eggs and candy every spring.
+1|Elsa|Ice queen from Frozen who can't stop singing "Let It Go."
+1|Simba|Lion cub who becomes king in The Lion King. Hakuna matata.
+2|Bob Ross|Soft-spoken TV painter with a perm. "Happy little trees."
+2|Mister Rogers|Gentle TV neighbor in a cardigan who swapped his shoes every episode.
+2|Julia Child|Tall, warbly-voiced chef who brought French cooking to American TV.
+2|Gordon Ramsay|British chef who yells at people in kitchens. "It's RAW!"
+2|Steve Jobs|Apple co-founder in a black turtleneck. "One more thing..."
+2|Mark Zuckerberg|Started Facebook in a Harvard dorm room.
+2|Frida Kahlo|Mexican painter famous for self-portraits and a strong unibrow.
+2|Vincent van Gogh|Painted "The Starry Night" and sunflowers. Cut off part of his ear.
+2|Joan of Arc|French teenage warrior who heard voices and led an army.
+2|Genghis Khan|Founder of the Mongol Empire, the biggest land empire in history.
+2|Julius Caesar|Roman leader stabbed in the Senate. "Et tu, Brute?"
+2|Marie Curie|Pioneering scientist of radioactivity; first person to win two Nobel Prizes.
+2|Amelia Earhart|Aviator who vanished trying to fly around the world.
+2|Neil Armstrong|First person to walk on the Moon. "One small step for man..."
+2|Martin Luther King Jr.|Civil rights leader. "I have a dream."
+2|Princess Diana|The People's Princess. Married Prince Charles in a famous wedding.
+2|Queen Elizabeth II|Britain's longest-reigning monarch. Loved corgis.
+2|Snoop Dogg|Laid-back rapper from Long Beach who cooks with Martha Stewart.
+2|Martha Stewart|Queen of homemaking, crafts, and recipes. Did time, came back stronger.
+2|Guy Fieri|Spiky bleached hair, flame shirts, visits diners and dives. Flavortown.
+2|Keanu Reeves|Played Neo and John Wick. The internet agrees he's the nicest guy alive.
+2|Nicolas Cage|Actor famous for intense, unhinged performances. Stole the Declaration of Independence.
+2|Dwayne "The Rock" Johnson|Wrestler turned action star. One raised eyebrow.
+2|Bill Nye|The Science Guy in a bow tie and lab coat.
+2|Steve Irwin|The Crocodile Hunter. Khaki shorts and "Crikey!"
+2|Willy Wonka|Eccentric candy maker who gave out golden tickets to his chocolate factory.
+2|Mary Poppins|Magical nanny with an umbrella. "A spoonful of sugar..."
+2|Captain Hook|Peter Pan's pirate enemy, missing a hand, terrified of a ticking crocodile.
+2|Tinker Bell|Tiny fairy with a temper who sprinkles pixie dust.
+2|Pinocchio|Wooden puppet whose nose grows when he lies.
+2|Humpty Dumpty|Egg who sat on a wall and had a great fall.
+2|Medusa|Greek monster with snakes for hair. One look turns you to stone.
+2|Zeus|King of the Greek gods. Throws lightning bolts from Mount Olympus.
+2|Cupid|Winged baby with a bow and arrow who makes people fall in love.
+2|The Grim Reaper|Hooded skeleton with a scythe who comes to collect souls.
+2|Rapunzel|Princess in a tower who lets down her very long hair.
+2|Cookie Monster|Blue Sesame Street Muppet. "Me want cookie!"
+2|Scooby-Doo|Cowardly Great Dane who solves mysteries for Scooby Snacks.
+2|Homer Simpson|Bald dad from Springfield who loves donuts and Duff beer. "D'oh!"
+2|Michael Scott|Cringe-inducing boss on The Office. "That's what she said."
+2|Forrest Gump|"Life is like a box of chocolates." Ran across America. Run, Forrest, run!
+2|Rocky Balboa|Underdog boxer from Philly who runs up the museum steps.
+2|Indiana Jones|Archaeologist with a whip and a fedora. Hates snakes.
+2|James Bond|Agent 007. Shaken, not stirred.
+2|The Terminator|Cyborg assassin from the future. "I'll be back."
+2|E.T.|Little alien who wanted to phone home. Glowing fingertip.
+2|King Kong|Giant ape who climbs the Empire State Building.
+2|Chewbacca|Tall, furry Wookiee co-pilot of the Millennium Falcon.
+2|The Hulk|Scientist who turns huge and green when he gets angry. "Hulk smash!"
+2|The Joker|Batman's grinning, green-haired, clown-faced nemesis.
+2|Captain Jack Sparrow|Swaying, eyeliner-wearing pirate captain of the Black Pearl.
+2|Buzz Lightyear|Space Ranger toy. "To infinity and beyond!"
+2|Ronald McDonald|Red-haired clown mascot of a fast food chain.
+2|Colonel Sanders|White suit, string tie, goatee, and fried chicken.
+2|The Kool-Aid Man|Giant pitcher of red drink who bursts through walls. "Oh yeah!"
+2|Pac-Man|Yellow circle who eats dots in a maze and runs from ghosts.
+2|Sonic the Hedgehog|Speedy blue video game hedgehog who collects gold rings.
+2|Simone Biles|Gymnast with so many signature moves they're named after her.
+2|Usain Bolt|Fastest man ever. Celebrates with a lightning-bolt pose.
+2|Tom Brady|Quarterback with seven Super Bowl rings.
+2|Muhammad Ali|Boxing legend. "Float like a butterfly, sting like a bee."
+2|Lionel Messi|Tiny Argentine soccer wizard who finally won the World Cup.
+2|A Mime|Silent street performer in face paint, trapped in an invisible box.
+2|A Ninja|Silent assassin dressed in black who throws stars.
+2|A Vampire|Fangs, cape, no reflection, afraid of garlic.
+2|A Unicorn|Magical horse with a single horn on its forehead.
+2|A Leprechaun|Little Irish man in green guarding a pot of gold.
+2|A Sumo Wrestler|Huge wrestler in a loincloth stomping around a ring.
+2|A Lifeguard|Red swimsuit, whistle, high chair at the pool.
+2|A Mall Santa|A guy in a fake beard with a line of crying kids.
+2|A Substitute Teacher|Gets the class for a day; nobody listens to them.
+2|The Macarena|90s line dance with a hand-on-hip, hand-on-head routine.
+2|The Moonwalk|Michael Jackson's backwards glide.
+2|Brain Freeze|The stabbing headache you get from eating ice cream too fast.
+2|The Loch Ness Monster|Nessie: long-necked creature supposedly living in a Scottish lake.
+2|The Titanic|"Unsinkable" ship that hit an iceberg in 1912.
+2|The Leaning Tower of Pisa|Italian bell tower that never stood up straight. Tourists pretend to hold it up.
+2|Baby Shark|Viral kids' song. Doo doo doo doo doo doo.
+2|The Ice Bucket Challenge|2014 viral charity stunt: dump freezing water on your head.
+2|Area 51|Secret Nevada military base where people swear the aliens are kept.
+2|A Selfie Stick|Pole for holding your phone far away to fit everyone in the shot.
+3|Grigori Rasputin|Mystic Russian monk who was very hard to kill.
+3|Nikola Tesla|Inventor of alternating current. Rival of Edison.
+3|Harry Houdini|Escape artist who got out of handcuffs, chains and water tanks.
+3|Benjamin Franklin|Founding father who flew a kite in a storm. On the $100 bill.
+3|Paul Revere|Midnight rider. "The British are coming!"
+3|Marie Antoinette|French queen who supposedly said "Let them eat cake." Lost her head.
+3|Henry VIII|English king with six wives. Divorced, beheaded, died...
+3|Vlad the Impaler|Brutal Romanian prince who inspired Dracula.
+3|Leonardo da Vinci|Renaissance genius: painter, inventor, wrote backwards.
+3|Galileo|Astronomer who said Earth goes around the Sun and got in trouble for it.
+3|Isaac Newton|Got hit by an apple and came up with gravity.
+3|Charles Darwin|Sailed to the Galápagos and came up with evolution.
+3|Sigmund Freud|Father of psychoanalysis. "Tell me about your mother."
+3|Socrates|Greek philosopher who asked questions until people got annoyed.
+3|Bruce Lee|Martial arts legend. Yellow jumpsuit, lightning-fast kicks.
+3|Jane Goodall|Scientist who lived among chimpanzees in Tanzania.
+3|Mr. Bean|Nearly silent, rubber-faced British bumbler with a teddy bear.
+3|"Weird Al" Yankovic|Curly-haired accordion player who makes song parodies.
+3|Richard Simmons|Fitness guru in tiny shorts and a sparkly tank top. Sweatin' to the Oldies.
+3|Billy Mays|Bearded infomercial pitchman who shouted about OxiClean.
+3|Mr. Peanut|Peanut mascot with a top hat, monocle and cane.
+3|The Michelin Man|Puffy white tire-shaped mascot.
+3|Tony the Tiger|Cereal mascot. "They're Gr-r-reat!"
+3|Lara Croft|Video game tomb raider with two pistols and a long braid.
+3|Waldo|Red-and-white striped guy you can never find in the crowd.
+3|Big Bird|Eight-foot-tall yellow bird on Sesame Street.
+3|Garfield|Lazy orange cat who loves lasagna and hates Mondays.
+3|Edward Scissorhands|Pale, gentle man with blades for hands who trims hedges.
+3|Wednesday Addams|Deadpan goth girl with braids. Does a famously odd dance.
+3|Ron Swanson|Mustachioed government employee who hates government. Loves breakfast meat.
+3|Gandalf|Grey-bearded wizard. "You shall not pass!"
+3|Thor|Norse god of thunder with a hammer only he can lift.
+3|Hercules|Greek demigod famous for strength and twelve labors.
+3|Excalibur|King Arthur's sword pulled from a stone.
+3|The Holy Grail|The cup everyone from knights to Indiana Jones has quested for.
+3|Atlantis|Legendary civilization that sank beneath the sea.
+3|Pandora's Box|Opened it and let all the evils into the world. Hope was left inside.
+3|The Trojan Horse|Giant wooden horse with soldiers hiding inside.
+3|Stonehenge|Ring of giant standing stones in England. Nobody's sure why.
+3|Mount Rushmore|Four presidents' faces carved into a South Dakota mountain.
+3|The Bermuda Triangle|Patch of ocean where ships and planes supposedly vanish.
+3|The Fountain of Youth|Mythical spring that makes you young again.
+3|A Ventriloquist|Talks without moving their lips through a wooden dummy.
+3|A Sleepwalker|Wanders around at night with arms out, still asleep.
+3|A Flat-Earther|Very sure the planet is a pancake.
+3|A Mosh Pit|Crowd of people slamming into each other at a concert.
+3|A Bad First Date|Awkward silence, spinach in teeth, someone talks about their ex.
+3|A Food Critic|Takes one bite, frowns, and writes it all down.
+3|A Sommelier|Swirls, sniffs, and spits wine professionally.
+3|A Bouncer|Big person at the club door checking IDs and saying no.
+3|An Auctioneer|Talks impossibly fast. "Do I hear fifty? Sold!"
+3|A Lumberjack|Plaid shirt, beard, axe. "Timber!"
+3|A Beekeeper|Wears a veiled suit and smokes out a hive.
+3|A Weather Reporter in a Hurricane|Leaning sideways into the wind, clinging to a microphone.
+3|The Wave|When a whole stadium stands up and sits down in sequence.
+3|Grumpy Cat|Internet-famous cat with a permanent frown.
+3|Rickrolling|Tricking someone into watching "Never Gonna Give You Up."
+3|Gangnam Style|K-pop hit with an invisible-horse-riding dance.
+3|Planking|Lying face-down stiff as a board in weird places for photos.
+3|Y2K|The panic that computers would crash when the year hit 2000.
+3|The Great Wall of China|Very long wall built to keep invaders out.
+3|Air Guitar|Shredding a solo on an instrument that isn't there.
+3|A Yodeler|Swiss mountain singer whose voice flips. Yodel-ay-ee-hoo!
+3|A Crossing Guard|Orange vest and a stop sign, walking kids across the street.
+3|Mr. Clean|Bald, muscular, earring-wearing cleaning-product mascot.
+3|Uncle Sam|Star-spangled top hat, white goatee, pointing: "I want YOU."
+3|Smokey Bear|Ranger hat and jeans. "Only you can prevent wildfires."
+3|Rosie the Riveter|WWII poster woman in a red bandana flexing her arm. "We Can Do It!"
+3|Tetris|Falling blocks you rotate to clear lines. That song.
+3|The Statue of Liberty|Green lady with a torch in New York Harbor. A gift from France.
+4|Diogenes|Greek philosopher who lived in a barrel and wandered with a lantern looking for an honest man.
+4|Typhoid Mary|Cook who spread typhoid to everyone she fed without ever getting sick.
+4|Sisyphus|Doomed by the gods to push a boulder up a hill forever.
+4|Narcissus|Fell in love with his own reflection in a pool.
+4|Icarus|Flew too close to the sun on wax wings.
+4|Schrödinger's Cat|Thought experiment cat in a box that's both alive and dead.
+4|Pavlov's Dog|Drooled whenever a bell rang because it expected food.
+4|Dolly the Sheep|First mammal cloned from an adult cell.
+4|Boaty McBoatface|The name the internet voted for a British research ship.
+4|Florida Man|Headline-making star of the strangest news stories.
+4|The Dancing Plague|In 1518 hundreds of people in Strasbourg danced uncontrollably for days.
+4|Occam's Razor|The simplest explanation is usually the right one.
+4|Murphy's Law|Anything that can go wrong will go wrong.
+4|The Butterfly Effect|A butterfly flaps its wings and causes a tornado on the other side of the world.
+4|Déjà Vu|The eerie feeling you've lived this exact moment before.
+4|Impostor Syndrome|The nagging sense that you're a fraud and everyone's about to find out.
+4|A Midlife Crisis|Buying a red sports car and getting a tattoo at 47.
+4|A Participation Trophy|Everybody gets one just for showing up.
+4|A Raccoon in a Trench Coat|Trash bandit trying very hard to pass as a person.
+4|Three Kids in a Trench Coat|Stacked on each other's shoulders, trying to get into an R-rated movie.
+4|The Hamburglar|Fast food mascot in a striped shirt and mask who steals burgers. "Robble robble."
+4|Grimace|Big purple blob from McDonaldland.
+4|Clippy|Microsoft Office's paperclip helper. "It looks like you're writing a letter."
+4|The Pet Rock|A rock in a box sold as a pet in the 70s. Made a fortune.
+4|A Tamagotchi|Little egg-shaped digital pet that dies if you forget to feed it.
+4|A Furby|Owl-like 90s toy that talked, blinked, and wouldn't turn off.
+4|The Snuggie|Blanket with sleeves, sold on late-night TV.
+4|A Sea Shanty|Rhythmic sailor work song. Soon may the Wellerman come.
+4|Jazzercise|Aerobics plus jazz dance, peak 80s headbands.
+4|The Electric Slide|Wedding line dance that everyone somehow knows.
+4|An Escape Room|Locked in a room with your friends, solving puzzles before time runs out.
+4|A Haunted Doll|Porcelain doll whose head turns when you're not looking.
+4|Your Last Brain Cell|Working overtime by Friday afternoon.
+4|Oscar the Grouch|Green Sesame Street grump who lives in a trash can.
+4|Carmen Sandiego|International thief in a red trench coat and fedora.
+4|Frogger|Arcade frog trying to cross a busy road and a river.
+4|Ms. Frizzle|Wild-dressing teacher who drives the Magic School Bus.
+4|Paul Bunyan|Giant lumberjack of American folklore with Babe the Blue Ox.
+4|Johnny Appleseed|Pioneer who walked barefoot planting apple trees, a pot on his head.
+4|McGruff the Crime Dog|Trench-coated cartoon dog. "Take a bite out of crime."
+4|The Monopoly Man|Rich Uncle Pennybags: top hat, mustache, cane, no monocle.
+4|The Gerber Baby|Smiling baby drawing on jars of baby food.
+4|The Velveteen Rabbit|Stuffed rabbit who became real because a boy loved him so much.
+4|Laika|Soviet street dog who was one of the first animals in orbit.
+4|Phineas Gage|Railroad worker who survived an iron rod through his skull.
+4|Tycho Brahe|Danish astronomer who lost his nose in a duel and wore a metal one.
+4|Ozymandias|"Look on my works, ye Mighty, and despair!" Just a broken statue in the sand now.
+4|Tumbleweed|Rolls across an empty western street when nobody laughs at your joke.
+4|A Hype Man|Stands next to the rapper yelling "YEAH!" at the end of every line.
+4|A Tired Parent at Disney World|Stroller, three bags, a crying kid, and a $14 churro.
+4|A Group Chat Left on Read|Everyone saw it. Nobody answered.
+4|Sad Trombone|Wah wah wahhh. The sound of failure.
+4|A Golden Retriever Boyfriend|Loyal, excitable, not overthinking anything.
+4|The Floor Is Lava|Kids' game: jump onto the furniture before you burn.
+4|The Infinity Gauntlet|Glove with six stones that let a purple titan snap away half the universe.
+`;
+const CARDS = CARD_TEXT.trim().split('\n').map(l => {
+  const [p, name, desc] = l.split('|');
+  return { pts: +p, name, desc };
+});
+
+/* ---------- Constants ---------- */
+const STORE_KEY = 'monikers-home-v1';
+const ROUNDS = [
+  { short: 'Anything goes', rule: 'Say anything except the name on the card. Describe it, act it out, sing, hum, point.' },
+  { short: 'One word', rule: 'Give exactly one word. You can repeat that word and act along, but no other words.' },
+  { short: 'Charades', rule: 'No words at all. Act it out. Gestures and sound effects only.' },
+];
+const TEAM_NAMES = ['Blue', 'Gold', 'Pink', 'Teal'];
+const SECONDS = [30, 45, 60, 90];
+
+/* ---------- State ---------- */
+let S = null;
+function defaultSettings() {
+  return {
+    teams: [{ name: 'Team Blue' }, { name: 'Team Gold' }],
+    players: 6, mode: 'draft', deal: 10, keep: 7, seconds: 60, carry: true,
+  };
+}
+function fresh() { return { screen: 'home', settings: defaultSettings(), game: null }; }
+function load() {
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+  return null;
+}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) {} }
+
+/* ---------- Helpers ---------- */
+const $app = document.getElementById('app');
+const $ov = document.getElementById('overlay-root');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const teamColor = i => `var(--t${i % 4})`;
+const ptsColor = p => `var(--p${clamp(p, 1, 4)})`;
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const G = () => S.game;
+
+function maxDeal(players) { return Math.max(2, Math.floor(CARDS.length / players)); }
+function suggestKeep(players) { return clamp(Math.round(45 / players), 3, 10); }
+function deckSize(st) { return st.players * st.keep; }
+
+/* ---------- Audio / haptics / wake lock ---------- */
+let actx = null;
+function audio() {
+  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) {}
+  return actx;
+}
+function beep(freq, dur, vol = 0.15, type = 'sine') {
+  const c = actx; if (!c) return;
+  try {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.value = freq; g.gain.value = vol;
+    o.connect(g); g.connect(c.destination);
+    const t = c.currentTime; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t); o.stop(t + dur + 0.02);
+  } catch (e) {}
+}
+function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+let wake = null;
+async function holdWake() { try { if ('wakeLock' in navigator && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch (e) { wake = null; } }
+function dropWake() { try { wake && wake.release(); } catch (e) {} wake = null; }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S && S.screen === 'turn') holdWake(); });
+
+/* ---------- Rendering ---------- */
+function cardHTML(c, extra = '') {
+  return `<article class="card ${extra} ${c.custom ? 'custom' : ''}" style="--pc:${ptsColor(c.pts)}">
+    <div class="pts" role="img" aria-label="${plural(c.pts, 'point')}">${c.pts}</div>
+    <div class="cname">${esc(c.name)}</div>
+    <div class="cdesc">${esc(c.desc)}</div>
+  </article>`;
+}
+function topbar(title, back = 'menu') {
+  const left = back === 'home' ? `<button class="iconbtn" data-a="go" data-v="home" aria-label="Back">‹</button>`
+    : back === 'menu' ? `<button class="iconbtn" data-a="menu" aria-label="Game menu">⋯</button>` : `<span style="width:44px"></span>`;
+  return `<div class="topbar">${left}<div class="title">${esc(title)}</div><span style="width:44px"></span></div>`;
+}
+function teamPill(i) { const t = G().teams[i]; return `<span class="pill"><span class="teamdot" style="background:${teamColor(i)}"></span>${esc(t.name)}</span>`; }
+
+const VIEWS = {
+  home() {
+    const resumable = S.game && S.game.phase !== 'over';
+    return `<div class="screen">
+      <div class="home-hero">
+        <div class="fan" aria-hidden="true">
+          <div class="mini"><b>Bob Ross</b><span>Happy little trees</span></div>
+          <div class="mini"><b>A Mime</b><span>Trapped in a box</span></div>
+          <div class="mini"><b>Sad Trombone</b><span>Wah wah wahhh</span></div>
+        </div>
+        <div><p class="eyebrow">A party game for 4 to 20</p><h1>Monikers<br>at Home</h1></div>
+        <p class="tagline">One deck, three rounds, two teams yelling at each other. Pass one phone around.</p>
+        <div class="rounds-mini">
+          ${ROUNDS.map((r, i) => `<div><b>${i + 1}</b><span>${r.short}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="footer">
+        ${resumable ? `<button class="btn sun block" data-a="resume">Resume game</button>` : ''}
+        <button class="btn primary block" data-a="go" data-v="setup">${resumable ? 'New game' : 'Start a game'}</button>
+        <button class="btn ghost block" data-a="go" data-v="rules">How to play</button>
+        <p class="credit">Unofficial home version of Monikers by Alex Hague &amp; Justin Vickers. All ${CARDS.length} cards written fresh for this one.</p>
+      </div>
+    </div>`;
+  },
+
+  rules() {
+    return `<div class="screen">
+      ${topbar('How to play', 'home')}
+      <div class="scroll rules">
+        <h2>How to play</h2>
+        <p>Split into teams. Every turn, one player is the clue-giver and holds the phone. They have a timer to get their own team to guess as many cards as they can. Then the phone goes to the next team.</p>
+        <h3>Build the deck</h3>
+        <ul>
+          <li><b>Draft:</b> pass the phone around. Each player is dealt a hand and secretly keeps their favorites. Those cards make the deck.</li>
+          <li><b>Quick deal:</b> the app picks a random deck.</li>
+          <li><b>Write your own:</b> each player types in names, like the classic game Celebrity.</li>
+        </ul>
+        <h3>Three rounds, same deck</h3>
+        ${ROUNDS.map((r, i) => `<div class="rule-card"><div class="num">${i + 1}</div><div><h3>${r.short}</h3><p class="muted">${r.rule}</p></div></div>`).join('')}
+        <p>The cards repeat every round, so pay attention in round one. Inside jokes from early rounds are the whole point.</p>
+        <h3>During a turn</h3>
+        <ul>
+          <li>Tap <b>Got it</b> when your team says the name. Each card is worth 1 to 4 points.</li>
+          <li>Tap <b>Skip</b> to put a card at the bottom of the pile. Skips are free.</li>
+          <li>If the buzzer goes mid-guess, you decide whether it counted.</li>
+          <li>After each turn you can undo any card that was tapped by mistake.</li>
+          <li>If your team clears the deck early, the leftover time carries into the next round (you can turn this off in setup).</li>
+        </ul>
+        <h3>Winning</h3>
+        <p>Points from all three rounds add up. Highest total wins.</p>
+      </div>
+      ${S.returnTo ? '' : `<div class="footer"><button class="btn primary block" data-a="go" data-v="setup">Set up a game</button></div>`}
+    </div>`;
+  },
+
+  setup() {
+    const st = S.settings;
+    const md = maxDeal(st.players);
+    return `<div class="screen">
+      ${topbar('New game', 'home')}
+      <div class="scroll">
+        <div class="panel">
+          <div class="setrow"><span class="label">Teams</span>
+            <div class="stepper"><button data-a="teams" data-v="-1" aria-label="Fewer teams">−</button><output>${st.teams.length}</output><button data-a="teams" data-v="1" aria-label="More teams">+</button></div>
+          </div>
+          ${st.teams.map((t, i) => `<div class="row"><span class="teamdot" style="background:${teamColor(i)};width:18px;height:18px"></span>
+            <input type="text" id="team-${i}" data-in="team" data-v="${i}" value="${esc(t.name)}" maxlength="20" aria-label="Team ${i + 1} name" autocomplete="off"></div>`).join('')}
+        </div>
+
+        <div class="panel">
+          <div class="setrow"><span class="label">Players</span>
+            <div class="stepper"><button data-a="players" data-v="-1" aria-label="Fewer players">−</button><output>${st.players}</output><button data-a="players" data-v="1" aria-label="More players">+</button></div>
+          </div>
+          <div class="field"><span class="label">Deck</span>
+            <div class="seg" role="group" aria-label="How to build the deck">
+              ${[['draft', 'Draft'], ['quick', 'Quick deal'], ['custom', 'Write own']].map(([k, l]) => `<button data-a="mode" data-v="${k}" aria-pressed="${st.mode === k}">${l}</button>`).join('')}
+            </div>
+            <p class="hint">${st.mode === 'draft' ? 'Pass the phone. Each player secretly keeps their favorites from a hand.' : st.mode === 'quick' ? 'The app deals a random deck. Fastest way to start.' : 'Each player types in their own names. Blanks get filled with random cards.'}</p>
+          </div>
+          ${st.mode === 'draft' ? `<div class="setrow"><span class="label">Cards dealt each</span>
+            <div class="stepper"><button data-a="deal" data-v="-1" aria-label="Deal fewer">−</button><output>${st.deal}</output><button data-a="deal" data-v="1" aria-label="Deal more">+</button></div></div>` : ''}
+          <div class="setrow"><span class="label">${st.mode === 'draft' ? 'Cards kept each' : st.mode === 'custom' ? 'Names per player' : 'Cards per player'}</span>
+            <div class="stepper"><button data-a="keep" data-v="-1" aria-label="Fewer">−</button><output>${st.keep}</output><button data-a="keep" data-v="1" aria-label="More">+</button></div></div>
+          <p class="hint">Deck: <b>${deckSize(st)} cards</b>. Around 40 to 50 plays best.${st.mode === 'draft' && st.deal >= md ? ` Max deal for ${st.players} players is ${md}.` : ''}</p>
+        </div>
+
+        <div class="panel">
+          <div class="field"><span class="label">Seconds per turn</span>
+            <div class="seg" role="group" aria-label="Seconds per turn">
+              ${SECONDS.map(s => `<button data-a="secs" data-v="${s}" aria-pressed="${st.seconds === s}">${s}</button>`).join('')}
+            </div>
+          </div>
+          <div class="setrow"><div><div class="label">Carry over leftover time</div><p class="hint">Clear the deck early and keep your remaining seconds for the next round.</p></div>
+            <button class="toggle" data-a="carry" aria-pressed="${st.carry}" aria-label="Carry over leftover time"></button></div>
+        </div>
+      </div>
+      <div class="footer"><button class="btn primary block" data-a="begin">${st.mode === 'quick' ? 'Deal and start' : st.mode === 'draft' ? 'Start the draft' : 'Start writing names'}</button></div>
+    </div>`;
+  },
+
+  draft() {
+    const g = G(), d = g.draft, st = S.settings;
+    if (!d.reveal) {
+      return `<div class="screen">${topbar(`Draft · player ${d.player + 1} of ${st.players}`)}
+        <div class="pass">
+          <p class="eyebrow">Pass the phone to</p>
+          <div class="big">Player ${d.player + 1}</div>
+          <p class="muted" style="max-width:30ch">Pick ${st.keep} of ${st.deal} cards to put in the deck. Keep them secret.</p>
+        </div>
+        <div class="footer"><button class="btn primary block" data-a="reveal">Show my cards</button></div></div>`;
+    }
+    const n = d.picked.length;
+    return `<div class="screen">${topbar(`Player ${d.player + 1} of ${st.players}`)}
+      <div class="row"><p class="grow"><b>Keep ${st.keep}.</b> <span class="muted small">Tap to choose.</span></p><span class="counter">${n} / ${st.keep}</span></div>
+      <div class="scroll"><div class="draft-grid">
+        ${d.hand.map((c, i) => `<button class="dcard" data-a="pick" data-v="${i}" aria-pressed="${d.picked.includes(i)}" style="--pc:${ptsColor(c.pts)}">
+          <i>${c.pts}</i><b>${esc(c.name)}</b><span>${esc(c.desc)}</span></button>`).join('')}
+      </div></div>
+      <div class="footer"><button class="btn primary block" data-a="draftDone" ${n === st.keep ? '' : 'disabled'}>${n === st.keep ? (d.player + 1 < st.players ? 'Lock in and pass' : 'Lock in and start') : `Pick ${st.keep - n} more`}</button></div>
+    </div>`;
+  },
+
+  custom() {
+    const g = G(), c = g.custom, st = S.settings;
+    if (!c.reveal) {
+      return `<div class="screen">${topbar(`Names · player ${c.player + 1} of ${st.players}`)}
+        <div class="pass">
+          <p class="eyebrow">Pass the phone to</p>
+          <div class="big">Player ${c.player + 1}</div>
+          <p class="muted" style="max-width:32ch">Write ${st.keep} names everyone at the table could plausibly guess: people, characters, things. Keep them secret.</p>
+        </div>
+        <div class="footer"><button class="btn primary block" data-a="reveal">I'm ready</button></div></div>`;
+    }
+    return `<div class="screen">${topbar(`Player ${c.player + 1} of ${st.players}`)}
+      <div class="scroll"><div class="custom-list">
+        ${c.entries.map((v, i) => `<input type="text" id="name-${i}" data-in="name" data-v="${i}" value="${esc(v)}" maxlength="60" placeholder="Name ${i + 1}" autocomplete="off" autocapitalize="words">`).join('')}
+      </div><p class="hint">Blank lines get a random card from the deck instead.</p></div>
+      <div class="footer"><button class="btn primary block" data-a="customDone">${c.player + 1 < st.players ? 'Lock in and pass' : 'Lock in and start'}</button></div>
+    </div>`;
+  },
+
+  roundIntro() {
+    const g = G(), r = ROUNDS[g.round - 1];
+    return `<div class="screen">${topbar(`Round ${g.round} of 3`)}
+      <div class="pass">
+        <p class="eyebrow">Round ${g.round} of 3 · ${plural(g.deck.length, 'card')}</p>
+        <div class="big">${r.short}</div>
+        <div class="rule-card"><div class="num">${g.round}</div><div><p>${r.rule}</p>${g.round > 1 ? '<p class="muted small" style="margin-top:6px">Same cards as last round, reshuffled.</p>' : ''}</div></div>
+      </div>
+      <div class="footer"><button class="btn primary block" data-a="toHandoff">Got it</button></div></div>`;
+  },
+
+  handoff() {
+    const g = G(), st = S.settings, r = ROUNDS[g.round - 1];
+    const carry = g.carry && g.carry.team === g.team ? g.carry.secs : null;
+    const secs = carry != null ? carry : st.seconds;
+    return `<div class="screen">${topbar(`Round ${g.round} · ${r.short}`)}
+      <div class="pass">
+        <p class="eyebrow">Next clue-giver from</p>
+        <div class="who" style="font-size:24px"><span class="teamdot" style="background:${teamColor(g.team)};width:22px;height:22px"></span>${esc(g.teams[g.team].name)}</div>
+        <div class="big">${secs}s</div>
+        <p class="muted">${carry != null ? 'Leftover time from last round. ' : ''}${plural(g.pile.length, 'card')} left in round ${g.round}.</p>
+        <div class="rule-card"><div class="num">${g.round}</div><div><h3>${r.short}</h3><p class="muted">${r.rule}</p></div></div>
+      </div>
+      <div class="footer"><button class="btn sun block" style="min-height:64px;font-size:22px" data-a="startTurn">Start turn</button>
+        <button class="btn ghost block" data-a="go" data-v="scores">Scoreboard</button></div></div>`;
+  },
+
+  turn() {
+    const g = G(), t = g.turn, c = g.deck[g.pile[0]];
+    return `<div class="screen">
+      <div class="turn-head">${teamPill(g.team)}<span class="grow muted small" style="font-weight:700;text-align:right">R${g.round} · ${ROUNDS[g.round - 1].short}</span>
+        <button class="iconbtn" data-a="pause" aria-label="Pause">❚❚</button></div>
+      <div class="timer" id="timer" style="--tc:${teamColor(g.team)}"><div class="fill" id="tfill"></div><span class="num" id="tnum">${Math.ceil(t.remaining / 1000)}</span></div>
+      <div class="stage">${c ? cardHTML(c, 'enter') : ''}</div>
+      <div class="turn-meta"><span>${plural(t.got.length, 'card')} this turn</span><span>${g.pile.length} left</span></div>
+      <div class="turn-actions">
+        <button class="btn" data-a="skip">Skip</button>
+        <button class="btn got" data-a="got">Got it</button>
+      </div>
+    </div>`;
+  },
+
+  review() {
+    const g = G(), t = g.turn;
+    const pts = t.got.filter(x => !x.undo).reduce((s, x) => s + g.deck[x.i].pts, 0);
+    const cleared = g.pile.length === 0 && t.got.every(x => !x.undo);
+    return `<div class="screen">${topbar('Turn over', 'none')}
+      <div class="row">${teamPill(g.team)}<span class="grow"></span></div>
+      <div><div class="bigscore">+${pts}</div><p class="muted">${t.got.length ? `${plural(t.got.filter(x => !x.undo).length, 'card')} this turn${cleared ? '. The deck is clear!' : ''}` : 'No cards this turn. It happens.'}</p></div>
+      <div class="scroll"><div class="list">
+        ${t.got.map((x, k) => { const c = g.deck[x.i]; return `<div class="li ${x.undo ? 'off' : ''}"><span class="chip" style="--pc:${ptsColor(c.pts)}">${c.pts}</span><span class="nm">${esc(c.name)}</span>
+          <button class="small-btn" data-a="undo" data-v="${k}">${x.undo ? 'Count it' : 'Undo'}</button></div>`; }).join('')}
+      </div>${t.got.length ? '<p class="hint">Undo a card if it was tapped by mistake. It goes back in the pile.</p>' : ''}</div>
+      <div class="footer"><button class="btn primary block" data-a="confirmTurn">${cleared ? (g.round < 3 ? 'End round' : 'See final scores') : 'Next team'}</button></div></div>`;
+  },
+
+  scores() {
+    const g = G();
+    return `<div class="screen">${topbar('Scoreboard', 'none')}
+      <div class="scroll">${scoreTable()}<p class="muted small">Round ${g.round} of 3 · ${plural(g.pile.length, 'card')} left this round.</p></div>
+      <div class="footer"><button class="btn primary block" data-a="go" data-v="handoff">Back to the game</button></div></div>`;
+  },
+
+  roundEnd() {
+    const g = G();
+    const next = g.carry ? g.carry.team : (g.team + 1) % g.teams.length;
+    return `<div class="screen">${topbar(`End of round ${g.round}`)}
+      <div class="scroll">
+        <div><p class="eyebrow">Round ${g.round} done</p><h2>${esc(leaderLine())}</h2></div>
+        ${scoreTable()}
+        <p class="muted">Up next: round ${g.round + 1}, <b>${ROUNDS[g.round].short}</b>. ${esc(g.teams[next].name)} goes first${g.carry ? ` with ${g.carry.secs} leftover seconds` : ''}.</p>
+      </div>
+      <div class="footer"><button class="btn primary block" data-a="nextRound">Start round ${g.round + 1}</button></div></div>`;
+  },
+
+  over() {
+    const g = G(), tot = totals();
+    const best = Math.max(...tot);
+    const winners = g.teams.map((t, i) => i).filter(i => tot[i] === best);
+    const headline = winners.length > 1 ? 'It’s a tie!' : `${g.teams[winners[0]].name} wins!`;
+    return `<div class="screen">${topbar('Final scores', 'none')}
+      <div class="scroll">
+        <div class="winner"><p class="eyebrow">Game over</p><div class="crown">${esc(headline)}</div>
+          <div class="row" style="justify-content:center;flex-wrap:wrap">${winners.map(i => teamPill(i)).join('')}</div></div>
+        ${scoreTable()}
+      </div>
+      <div class="footer"><button class="btn primary block" data-a="rematch">Play again, same teams</button>
+        <button class="btn ghost block" data-a="quit">Home</button></div></div>`;
+  },
+};
+
+function totals() { const g = G(); return g.scores.map(r => r.reduce((a, b) => a + b, 0)); }
+function leaderLine() {
+  const g = G(), tot = totals(), best = Math.max(...tot);
+  const lead = g.teams.map((t, i) => i).filter(i => tot[i] === best);
+  if (lead.length > 1) return 'Dead even so far';
+  const second = Math.max(...tot.filter((_, i) => i !== lead[0]));
+  return `${g.teams[lead[0]].name} leads by ${best - second}`;
+}
+function scoreTable() {
+  const g = G(), tot = totals();
+  return `<div class="tablewrap"><table class="scoretable"><thead><tr><th>Team</th>${[1, 2, 3].map(r => `<th>R${r}</th>`).join('')}<th>Total</th></tr></thead><tbody>
+    ${g.teams.map((t, i) => `<tr><td><span class="tn"><span class="teamdot" style="background:${teamColor(i)}"></span>${esc(t.name)}</span></td>
+      ${g.scores[i].map((s, r) => `<td>${r < g.round || g.phase === 'over' || s ? s : '–'}</td>`).join('')}<td class="total">${tot[i]}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+
+function render() {
+  const v = VIEWS[S.screen] || VIEWS.home;
+  $app.innerHTML = v();
+  renderOverlay();
+  if (S.screen === 'turn') tickTimer(); else stopLoop();
+}
+
+/* ---------- Overlays ---------- */
+let overlay = null; // 'menu' | 'pause' | 'timeup' | 'confirmQuit'
+function renderOverlay() {
+  if (!overlay) { $ov.innerHTML = ''; return; }
+  const g = G();
+  let body = '';
+  if (overlay === 'menu') {
+    body = `<h3>Game menu</h3>
+      ${g && g.phase === 'play' ? `<button class="btn block" data-a="ov" data-v="">Keep playing</button><button class="btn block" data-a="openScores">Scoreboard</button>` : `<button class="btn block" data-a="ov" data-v="">Keep going</button>`}
+      <button class="btn block" data-a="go" data-v="rules-from-game">How to play</button>
+      <button class="btn block" data-a="ov" data-v="confirmQuit" style="color:var(--bad)">Quit this game</button>`;
+  } else if (overlay === 'confirmQuit') {
+    body = `<h3>Quit this game?</h3><p class="muted">Scores and the deck will be thrown away.</p>
+      <button class="btn block" style="background:var(--bad);border-color:var(--bad);color:#fff" data-a="quit">Quit game</button>
+      <button class="btn ghost block" data-a="ov" data-v="${S.screen === 'turn' ? 'pause' : ''}">Cancel</button>`;
+  } else if (overlay === 'pause') {
+    body = `<h3>Paused</h3><p class="muted">${Math.ceil(g.turn.remaining / 1000)} seconds left. The card is hidden.</p>
+      <button class="btn primary block" data-a="resumeTurn">Resume</button>
+      <button class="btn block" data-a="endTurnEarly">End turn now</button>
+      <button class="btn ghost block" data-a="ov" data-v="confirmQuit" style="color:var(--bad)">Quit game</button>`;
+  } else if (overlay === 'timeup') {
+    const c = g.deck[g.pile[0]];
+    body = `<p class="eyebrow">Time's up</p><h2>Did they get it?</h2>
+      ${c ? `<div class="li"><span class="chip" style="--pc:${ptsColor(c.pts)}">${c.pts}</span><span class="nm">${esc(c.name)}</span></div>` : ''}
+      <div class="row"><button class="btn grow" data-a="lastCard" data-v="0">No</button><button class="btn got grow" data-a="lastCard" data-v="1">Yes, count it</button></div>`;
+  }
+  $ov.innerHTML = `<div class="overlay" ${overlay === 'timeup' ? '' : 'data-a="ovBackdrop"'}><div class="sheet" role="dialog" aria-modal="true">${body}</div></div>`;
+}
+
+/* ---------- Timer ---------- */
+let loop = null, lastBeep = null;
+function stopLoop() { if (loop) { clearInterval(loop); loop = null; } }
+function tickTimer() {
+  stopLoop();
+  updateTimerDOM();
+  if (G().turn.running) loop = setInterval(updateTimerDOM, 100);
+}
+function updateTimerDOM() {
+  const g = G(); if (!g || !g.turn) return;
+  const t = g.turn;
+  if (t.running) {
+    t.remaining = Math.max(0, t.endsAt - Date.now());
+    const s = Math.ceil(t.remaining / 1000);
+    if (s <= 5 && s > 0 && s !== lastBeep) { lastBeep = s; beep(880, 0.08, 0.12); }
+    if (t.remaining <= 0) { timeUp(); return; }
+  }
+  const num = document.getElementById('tnum'), fill = document.getElementById('tfill'), box = document.getElementById('timer');
+  if (!num) return;
+  const secs = Math.ceil(t.remaining / 1000);
+  num.textContent = secs;
+  fill.style.transform = `scaleX(${clamp(t.remaining / t.total, 0, 1)})`;
+  box.classList.toggle('low', secs <= 10);
+}
+function timeUp() {
+  const g = G();
+  stopLoop();
+  g.turn.running = false; g.turn.remaining = 0;
+  beep(220, 0.6, 0.25, 'sawtooth'); buzz([200, 80, 200]);
+  dropWake();
+  overlay = g.pile.length ? 'timeup' : null;
+  if (!g.pile.length) { S.screen = 'review'; }
+  save(); render();
+}
+
+/* ---------- Game flow ---------- */
+function newGame(deck) {
+  const st = S.settings;
+  S.game = {
+    phase: 'play', teams: st.teams.map(t => ({ name: (t.name || '').trim() || 'Team' })),
+    deck, round: 1, pile: shuffle(deck.map((_, i) => i)), team: 0,
+    scores: st.teams.map(() => [0, 0, 0]), carry: null, turn: null,
+  };
+  S.screen = 'roundIntro';
+}
+function startTurn() {
+  const g = G(), st = S.settings;
+  audio();
+  let secs = st.seconds;
+  if (g.carry && g.carry.team === g.team) secs = g.carry.secs;
+  g.carry = null;
+  g.turn = { total: secs * 1000, remaining: secs * 1000, endsAt: Date.now() + secs * 1000, running: true, got: [] };
+  lastBeep = null;
+  S.screen = 'turn';
+  beep(660, 0.12, 0.15);
+  holdWake();
+}
+// Ignore a second tap within 300ms so a double-tap can't burn two cards.
+let lastTap = 0;
+function tooFast() { const now = Date.now(); if (now - lastTap < 300) return true; lastTap = now; return false; }
+function finishTurnEmpty() {
+  const g = G(), t = g.turn, st = S.settings;
+  t.running = false; t.remaining = Math.max(0, t.endsAt - Date.now());
+  const left = Math.floor(t.remaining / 1000);
+  if (st.carry && g.round < 3 && left >= 3) g.carry = { team: g.team, secs: left };
+  stopLoop(); dropWake();
+  beep(988, 0.12, 0.15); setTimeout(() => beep(1318, 0.2, 0.15), 120);
+  S.screen = 'review';
+}
+
+const ACT = {
+  go(v) {
+    if (v === 'rules-from-game') { overlay = null; S.returnTo = S.screen; S.screen = 'rules'; return; }
+    if (v === 'home' && S.returnTo) { S.screen = S.returnTo; S.returnTo = null; return; }
+    if (v === 'setup') S.game = S.game && S.game.phase === 'play' ? S.game : null;
+    overlay = null; S.screen = v;
+  },
+  menu() { overlay = 'menu'; },
+  ov(v) { overlay = v || null; },
+  ovBackdrop(v, el, e) { if (e.target === el) { overlay = overlay === 'pause' ? 'pause' : null; } },
+  openScores() { overlay = null; S.screen = 'scores'; },
+  resume() { S.screen = S.game.screenBeforeHome || 'handoff'; if (S.screen === 'turn') { pauseState(); overlay = 'pause'; } },
+  quit() { overlay = null; dropWake(); S.game = null; S.screen = 'home'; },
+
+  teams(v) {
+    const st = S.settings, n = clamp(st.teams.length + +v, 2, 4);
+    while (st.teams.length < n) st.teams.push({ name: `Team ${TEAM_NAMES[st.teams.length]}` });
+    st.teams.length = n;
+  },
+  players(v) {
+    const st = S.settings;
+    st.players = clamp(st.players + +v, 2, 20);
+    st.keep = suggestKeep(st.players);
+    st.deal = st.keep + 3;
+    normalize();
+  },
+  mode(v) { S.settings.mode = v; normalize(); },
+  deal(v) { const st = S.settings; st.deal = clamp(st.deal + +v, st.keep + 1, maxDeal(st.players)); },
+  keep(v) {
+    const st = S.settings;
+    const max = st.mode === 'draft' ? st.deal - 1 : st.mode === 'custom' ? 10 : Math.floor(CARDS.length / st.players);
+    st.keep = clamp(st.keep + +v, 1, max);
+  },
+  secs(v) { S.settings.seconds = +v; },
+  carry() { S.settings.carry = !S.settings.carry; },
+
+  begin() {
+    const st = S.settings;
+    normalize();
+    S.game = null;
+    if (st.mode === 'quick') { newGame(shuffle(CARDS).slice(0, deckSize(st))); return; }
+    const base = { phase: 'build', teams: st.teams, deck: [] };
+    if (st.mode === 'draft') {
+      S.game = { ...base, draft: { player: 0, pool: shuffle(CARDS), hand: [], picked: [], reveal: false } };
+      S.screen = 'draft';
+    } else {
+      S.game = { ...base, custom: { player: 0, entries: Array(st.keep).fill(''), reveal: false } };
+      S.screen = 'custom';
+    }
+  },
+  reveal() {
+    const g = G();
+    if (S.screen === 'draft') { const d = g.draft; d.hand = d.pool.splice(0, S.settings.deal); d.picked = []; d.reveal = true; }
+    else { g.custom.reveal = true; }
+  },
+  pick(v) {
+    const d = G().draft, i = +v, k = d.picked.indexOf(i);
+    if (k >= 0) d.picked.splice(k, 1);
+    else if (d.picked.length < S.settings.keep) d.picked.push(i);
+  },
+  draftDone() {
+    const g = G(), d = g.draft, st = S.settings;
+    g.deck.push(...d.picked.map(i => d.hand[i]));
+    if (d.player + 1 < st.players) { d.player++; d.reveal = false; d.hand = []; d.picked = []; }
+    else newGame(g.deck);
+  },
+  customDone() {
+    const g = G(), c = g.custom, st = S.settings;
+    c.entries.forEach(v => { v = v.trim(); if (v) g.deck.push({ pts: 1, name: v, desc: `Written by player ${c.player + 1}`, custom: true }); });
+    if (c.player + 1 < st.players) { c.player++; c.reveal = false; c.entries = Array(st.keep).fill(''); }
+    else {
+      const need = st.players * st.keep - g.deck.length;
+      if (need > 0) g.deck.push(...shuffle(CARDS).slice(0, need));
+      newGame(g.deck);
+    }
+  },
+
+  toHandoff() { S.screen = 'handoff'; },
+  startTurn,
+  got() {
+    const g = G(), t = g.turn; if (!t.running || !g.pile.length || tooFast(t)) return;
+    t.got.push({ i: g.pile.shift() });
+    buzz(25);
+    if (!g.pile.length) finishTurnEmpty(); else beep(1046, 0.07, 0.1);
+  },
+  skip() {
+    const g = G(), t = g.turn; if (!t.running || !g.pile.length || tooFast(t)) return;
+    g.pile.push(g.pile.shift());
+  },
+  pause() { pauseState(); overlay = 'pause'; },
+  resumeTurn() {
+    const t = G().turn; audio();
+    t.running = true; t.endsAt = Date.now() + t.remaining; overlay = null; holdWake();
+  },
+  endTurnEarly() { overlay = null; const t = G().turn; t.running = false; dropWake(); S.screen = 'review'; },
+  lastCard(v) {
+    const g = G();
+    if (v === '1' && g.pile.length) g.turn.got.push({ i: g.pile.shift() });
+    overlay = null; S.screen = 'review';
+  },
+  undo(v) { const x = G().turn.got[+v]; x.undo = !x.undo; },
+  confirmTurn() {
+    const g = G(), t = g.turn;
+    let pts = 0;
+    const back = [];
+    t.got.forEach(x => { if (x.undo) back.push(x.i); else pts += g.deck[x.i].pts; });
+    g.scores[g.team][g.round - 1] += pts;
+    if (back.length) { g.pile = shuffle(g.pile.concat(back)); g.carry = null; }
+    g.turn = null;
+    if (!g.pile.length) {
+      if (g.round >= 3) { g.phase = 'over'; S.screen = 'over'; }
+      else S.screen = 'roundEnd';
+    } else {
+      g.team = (g.team + 1) % g.teams.length;
+      S.screen = 'handoff';
+    }
+  },
+  nextRound() {
+    const g = G();
+    g.team = g.carry ? g.carry.team : (g.team + 1) % g.teams.length;
+    g.round++;
+    g.pile = shuffle(g.deck.map((_, i) => i));
+    S.screen = 'roundIntro';
+  },
+  rematch() { S.screen = 'setup'; S.game = null; },
+};
+function normalize() {
+  const st = S.settings, md = maxDeal(st.players);
+  if (st.mode === 'draft') { st.keep = clamp(st.keep, 1, md - 1); st.deal = clamp(st.deal, st.keep + 1, md); }
+  else if (st.mode === 'custom') st.keep = clamp(st.keep, 1, 10);
+  else st.keep = clamp(st.keep, 1, Math.floor(CARDS.length / st.players));
+}
+function pauseState() {
+  const t = G().turn; if (!t) return;
+  if (t.running) { t.remaining = Math.max(0, t.endsAt - Date.now()); t.running = false; }
+  stopLoop(); dropWake();
+}
+
+/* ---------- Events ---------- */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]');
+  if (!el) return;
+  const a = el.dataset.a;
+  if (!ACT[a]) return;
+  if (a === 'ovBackdrop' && e.target !== el) return;
+  ACT[a](el.dataset.v, el, e);
+  if (S.game && S.screen !== 'home') S.game.screenBeforeHome = S.screen;
+  save(); render();
+});
+document.addEventListener('input', e => {
+  const el = e.target; if (!el.dataset || !el.dataset.in) return;
+  if (el.dataset.in === 'team') S.settings.teams[+el.dataset.v].name = el.value;
+  if (el.dataset.in === 'name') G().custom.entries[+el.dataset.v] = el.value;
+  save();
+});
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') {
+    if (e.key === 'Enter') { const nx = document.getElementById(`name-${+e.target.dataset.v + 1}`); if (nx) { e.preventDefault(); nx.focus(); } else e.target.blur(); }
+    return;
+  }
+  if (S.screen === 'turn' && !overlay) {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); ACT.got(); save(); render(); }
+    if (e.key === 'ArrowLeft') { ACT.skip(); save(); render(); }
+  }
+});
+
+/* ---------- Boot ---------- */
+function start(data) {
+  S = (data && data.screen) ? data : (load() || fresh());
+  if (!S.settings) S.settings = defaultSettings();
+  // A reload mid-turn comes back paused so nobody loses time.
+  if (S.screen === 'turn' && S.game && S.game.turn) { pauseState(); overlay = 'pause'; }
+  if (S.game && S.game.phase === 'build' && !['draft', 'custom'].includes(S.screen)) S.game = null;
+  render();
+}
+try { window.claude?.hot?.snapshot?.(() => S); } catch (e) {}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? null);
+
+if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.claude) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+<!--ARTIFACT-BODY-END-->
+</body>
+</html>
