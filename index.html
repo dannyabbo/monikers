@@ -17,7 +17,7 @@
   [hidden] { display: none !important; }
 </style>
 <!--ARTIFACT-START-->
-<title>Monikers at Home</title>
+<title>Danny Abbo’s very own Monikers that makes up for him forgetting it</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,7 +85,8 @@ body {
 .grow { flex: 1; }
 
 h1, h2, h3 { font-family: var(--display); font-weight: 400; margin: 0; line-height: 1.05; text-wrap: balance; letter-spacing: .005em; }
-h1 { font-size: clamp(44px, 14vw, 68px); }
+h1 { font-size: clamp(38px, 11.5vw, 58px); }
+.subname { font-family: var(--display); font-size: clamp(19px, 5.6vw, 26px); line-height: 1.1; color: var(--accent); margin-top: 6px; text-wrap: balance; }
 h2 { font-size: 30px; }
 h3 { font-size: 20px; }
 p { margin: 0; }
@@ -153,6 +154,17 @@ input[type="text"] {
 .rounds-mini b { display: block; font-family: var(--display); font-weight: 400; font-size: 26px; color: var(--accent); line-height: 1; }
 .rounds-mini span { font-size: 13px; font-weight: 700; }
 .credit { font-size: 12px; color: var(--muted); text-align: center; }
+.screen.home { overflow-y: auto; }
+@media (max-height: 760px) {
+  .home-hero { gap: 12px; padding-top: 0; }
+  .fan { height: 140px; width: 280px; }
+  .fan .mini { width: 96px; height: 128px; margin-left: -48px; padding: 10px; }
+  .fan .mini b { font-size: 15px; }
+  .fan .mini:nth-child(1) { transform: translateX(-80px) rotate(-12deg); }
+  .fan .mini:nth-child(3) { transform: translateX(80px) rotate(10deg); }
+  .rounds-mini { display: none; }
+  .tagline { font-size: 16px; }
+}
 
 /* The card */
 .card {
@@ -213,6 +225,8 @@ input[type="text"] {
 .li { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
 .li .nm { flex: 1; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
 .li.off .nm { text-decoration: line-through; color: var(--muted); }
+.li.skipped { background: transparent; border-style: dashed; }
+.li button.small-btn.add { background: var(--good); color: #fff; }
 .chip { flex: none; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 99px; display: grid; place-items: center; font-weight: 800; font-size: 14px; color: #fff; background: var(--pc, var(--accent)); }
 .li button.small-btn { flex: none; min-height: 36px; padding: 0 12px; border-radius: 10px; background: var(--surface-2); font-weight: 700; font-size: 14px; }
 .scoretable { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
@@ -601,15 +615,15 @@ function teamPill(i) { const t = G().teams[i]; return `<span class="pill"><span 
 const VIEWS = {
   home() {
     const resumable = S.game && S.game.phase !== 'over';
-    return `<div class="screen">
+    return `<div class="screen home">
       <div class="home-hero">
         <div class="fan" aria-hidden="true">
           <div class="mini"><b>Bob Ross</b><span>Happy little trees</span></div>
           <div class="mini"><b>A Mime</b><span>Trapped in a box</span></div>
           <div class="mini"><b>Sad Trombone</b><span>Wah wah wahhh</span></div>
         </div>
-        <div><p class="eyebrow">A party game for 4 to 20</p><h1>Monikers<br>at Home</h1></div>
-        <p class="tagline">One deck, three rounds, two teams yelling at each other. Pass one phone around.</p>
+        <div><p class="eyebrow">A party game for 4 to 20</p><h1>Danny Abbo’s very own Monikers</h1><p class="subname">that makes up for him forgetting it</p></div>
+        <p class="tagline">One deck, three rounds, two teams yelling at each other. ${NET_OK ? "Everyone on their own phone, or pass one around." : "Pass one phone around."}</p>
         <div class="rounds-mini">
           ${ROUNDS.map((r, i) => `<div><b>${i + 1}</b><span>${r.short}</span></div>`).join('')}
         </div>
@@ -794,7 +808,8 @@ const VIEWS = {
       <div class="scroll"><div class="list">
         ${t.got.map((x, k) => { const c = g.deck[x.i]; return `<div class="li ${x.undo ? 'off' : ''}"><span class="chip" style="--pc:${ptsColor(c.pts)}">${c.pts}</span><span class="nm">${esc(c.name)}</span>
           <button class="small-btn" data-a="undo" data-v="${k}">${x.undo ? 'Count it' : 'Undo'}</button></div>`; }).join('')}
-      </div>${t.got.length ? '<p class="hint">Undo a card if it was tapped by mistake. It goes back in the pile.</p>' : ''}</div>
+      </div>${t.got.length ? '<p class="hint">Undo a card if it was tapped by mistake. It goes back in the pile.</p>' : ''}
+      ${skippedHTML(skippedLocal(), c => `<button class="small-btn add" data-a="addSkipped" data-v="${c.i}">Add</button>`)}</div>
       <div class="footer"><button class="btn primary block" data-a="confirmTurn">${cleared ? (g.round < 3 ? 'End round' : 'See final scores') : 'Next team'}</button></div></div>`;
   },
 
@@ -859,6 +874,14 @@ function render() {
   if (S.screen === 'turn') tickTimer(); else stopLoop();
   if (S.screen === 'net' && N.view && N.view.phase === 'turn') { if (!netLoop) netLoop = setInterval(netTimer, 100); netTimer(); }
   else if (netLoop) { clearInterval(netLoop); netLoop = null; }
+}
+
+// Cards skipped this turn that are still in the pile, so a skip that was really a guess can be added back.
+function skippedHTML(cards, btn) {
+  if (!cards.length) return '';
+  return `<p class="eyebrow" style="margin-top:6px">Skipped this turn</p><div class="list">
+    ${cards.map(c => `<div class="li skipped"><span class="chip" style="--pc:${ptsColor(c.pts)}">${c.pts}</span><span class="nm">${esc(c.name)}</span>${btn(c)}</div>`).join('')}
+  </div><p class="hint">Did they actually get one of these? Add it to the score.</p>`;
 }
 
 /* ---------- Overlays ---------- */
@@ -1048,6 +1071,7 @@ const ACT = {
   },
   skip() {
     const g = G(), t = g.turn; if (!t.running || !g.pile.length || tooFast(t)) return;
+    noteSkip(t, g.pile[0]);
     g.pile.push(g.pile.shift());
   },
   pause() { pauseState(); overlay = 'pause'; },
@@ -1059,9 +1083,16 @@ const ACT = {
   lastCard(v) {
     const g = G();
     if (v === '1' && g.pile.length) g.turn.got.push({ i: g.pile.shift() });
+    else if (g.pile.length) noteSkip(g.turn, g.pile[0]);
     overlay = null; S.screen = 'review';
   },
   undo(v) { const x = G().turn.got[+v]; x.undo = !x.undo; },
+  addSkipped(v) {
+    const g = G(), i = +v, k = g.pile.indexOf(i);
+    if (k < 0) return;
+    g.pile.splice(k, 1);
+    g.turn.got.push({ i });
+  },
   confirmTurn() {
     const g = G(), t = g.turn;
     let pts = 0;
@@ -1092,6 +1123,11 @@ function normalize() {
   if (st.mode === 'draft') { st.keep = clamp(st.keep, 1, md - 1); st.deal = clamp(st.deal, st.keep + 1, md); }
   else if (st.mode === 'custom') st.keep = clamp(st.keep, 1, 10);
   else st.keep = clamp(st.keep, 1, Math.floor(CARDS.length / st.players));
+}
+function noteSkip(t, i) { t.skipped = t.skipped || []; if (!t.skipped.includes(i)) t.skipped.push(i); }
+function skippedLocal() {
+  const g = G(), t = g.turn;
+  return (t.skipped || []).filter(i => g.pile.includes(i)).map(i => ({ ...g.deck[i], i }));
 }
 function pauseState() {
   const t = G().turn; if (!t) return;
@@ -1307,7 +1343,7 @@ function hostAct(pid, a, v) {
     case 'got': case 'skip': {
       if (h.phase !== 'turn' || pid !== g.giver || !t.running || !g.pile.length) return;
       const now = Date.now(); if (now - hostLastTap < 250) return; hostLastTap = now;
-      if (a === 'skip') { g.pile.push(g.pile.shift()); break; }
+      if (a === 'skip') { noteSkip(t, g.pile[0]); g.pile.push(g.pile.shift()); break; }
       t.got.push({ i: g.pile.shift() });
       if (!g.pile.length) {
         t.running = false; t.remaining = Math.max(0, t.endsAt - now);
@@ -1323,9 +1359,16 @@ function hostAct(pid, a, v) {
     case 'lastCard':
       if (h.phase !== 'timeup' || !giverOrHost) return;
       if (v === '1' && g.pile.length) t.got.push({ i: g.pile.shift() });
+      else if (g.pile.length) noteSkip(t, g.pile[0]);
       h.phase = 'review';
       break;
     case 'undo': if (h.phase === 'review' && giverOrHost && t.got[+v]) t.got[+v].undo = !t.got[+v].undo; break;
+    case 'addSkipped': {
+      const i = +v, k = g.pile.indexOf(i);
+      if (h.phase !== 'review' || !giverOrHost || !(t.skipped || []).includes(i) || k < 0) return;
+      g.pile.splice(k, 1); t.got.push({ i });
+      break;
+    }
     case 'confirm': {
       if (h.phase !== 'review' || !giverOrHost) return;
       let pts = 0; const back = [];
@@ -1393,7 +1436,8 @@ function buildView(pid) {
     if (t) {
       v.turn = { total: t.total, remaining: t.running ? Math.max(0, t.endsAt - Date.now()) : t.remaining, running: t.running,
         gotCount: t.got.filter(x => !x.undo).length,
-        got: ['review', 'timeup'].includes(h.phase) ? t.got.map(x => ({ name: g.deck[x.i].name, pts: g.deck[x.i].pts, undo: !!x.undo })) : [] };
+        got: ['review', 'timeup'].includes(h.phase) ? t.got.map(x => ({ name: g.deck[x.i].name, pts: g.deck[x.i].pts, undo: !!x.undo })) : [],
+        skipped: h.phase === 'review' ? (t.skipped || []).filter(i => g.pile.includes(i)).map(i => ({ i, name: g.deck[i].name, pts: g.deck[i].pts })) : [] };
       const watching = me && me.team !== g.team;
       if (['turn', 'timeup'].includes(h.phase) && g.pile.length && (pid === g.giver || watching)) v.card = g.deck[g.pile[0]];
     }
@@ -1698,7 +1742,7 @@ const NETVIEWS = {
       <div class="scroll"><div class="list">
         ${t.got.map((x, k) => `<div class="li ${x.undo ? 'off' : ''}"><span class="chip" style="--pc:${ptsColor(x.pts)}">${x.pts}</span><span class="nm">${esc(x.name)}</span>
           ${can ? `<button class="small-btn" data-a="netSend" data-v="undo" data-x="${k}">${x.undo ? 'Count it' : 'Undo'}</button>` : ''}</div>`).join('')}
-      </div></div>
+      </div>${skippedHTML(t.skipped || [], c => can ? `<button class="small-btn add" data-a="netSend" data-v="addSkipped" data-x="${c.i}">Add</button>` : '')}</div>
       <div class="footer">${can ? `<button class="btn primary block" data-a="netSend" data-v="confirm">${v.pileLeft === 0 && t.got.every(x => !x.undo) ? (v.round < 3 ? 'End round' : 'See final scores') : 'Next team'}</button>`
         : `<p class="muted" style="text-align:center">Waiting for ${esc(nameOf(v, v.giver))} to confirm…</p>`}</div></div>`;
   },
@@ -1806,7 +1850,7 @@ Object.assign(ACT, {
     const link = inviteLink();
     const done = () => { el.textContent = 'Link copied'; };
     try {
-      if (navigator.share) { navigator.share({ title: 'Monikers at Home', text: `Join my Monikers game. Room code ${N.code}`, url: link }).catch(() => {}); return; }
+      if (navigator.share) { navigator.share({ title: 'Danny Abbo’s very own Monikers', text: `Join my Monikers game. Room code ${N.code}`, url: link }).catch(() => {}); return; }
       navigator.clipboard.writeText(link).then(done, () => { el.textContent = link; });
     } catch (e) { el.textContent = link; }
   },
