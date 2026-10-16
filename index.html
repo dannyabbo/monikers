@@ -231,6 +231,23 @@ input[type="text"] {
 .rules ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 
 .custom-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* Multi-phone */
+.home-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.roomtag { min-width: 44px; text-align: right; font-weight: 800; letter-spacing: .12em; font-size: 14px; color: var(--accent); }
+.netstatus { align-self: center; background: var(--sun); color: var(--sun-ink); font-weight: 800; font-size: 13px; padding: 4px 12px; border-radius: 99px; }
+.codehero { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 6px 0 2px; }
+.roomcode { font-family: var(--display); font-size: clamp(64px, 22vw, 96px); line-height: 1; letter-spacing: .08em; color: var(--accent); }
+.codeinput { font-family: var(--display) !important; font-size: 34px !important; letter-spacing: .3em; text-transform: uppercase; text-align: center; min-height: 64px !important; }
+.teampanel { border-left: 6px solid var(--tc); }
+.teampanel input[type="text"] { min-height: 42px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pchip { display: inline-flex; align-items: center; background: var(--surface-2); border-radius: 99px; font-weight: 700; font-size: 15px; min-height: 36px; padding: 0 4px 0 12px; }
+.pchip > span, .pchip > button:first-child { padding-right: 8px; min-height: 36px; display: inline-flex; align-items: center; font-weight: 700; }
+.pchip.off { opacity: .5; }
+.pchip .x { width: 30px; height: 30px; border-radius: 50%; font-size: 18px; color: var(--muted); }
+.guessbig { font-family: var(--display); font-size: clamp(64px, 22vw, 104px); line-height: 1; color: var(--accent); }
+.notice { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-weight: 600; }
 </style>
 <!--ARTIFACT-HEAD-END-->
 </head>
@@ -238,6 +255,7 @@ input[type="text"] {
 <!--ARTIFACT-BODY-START-->
 <div id="app"></div>
 <div id="overlay-root"></div>
+<script src="vendor/peerjs.min.js"></script>
 
 <script>
 /* ---------- Cards (original text; points 1 = easy, 4 = hard) ---------- */
@@ -597,8 +615,11 @@ const VIEWS = {
         </div>
       </div>
       <div class="footer">
-        ${resumable ? `<button class="btn sun block" data-a="resume">Resume game</button>` : ''}
-        <button class="btn primary block" data-a="go" data-v="setup">${resumable ? 'New game' : 'Start a game'}</button>
+        ${N.notice ? `<p class="notice">${esc(N.notice)}</p>` : ''}
+        ${resumable ? `<button class="btn sun block" data-a="resume">Resume one-phone game</button>` : ''}
+        ${NET_OK ? `<div class="home-actions"><button class="btn primary" data-a="netHostForm">Host a game</button><button class="btn sun" data-a="netJoinForm">Join a game</button></div>
+          <button class="btn block" data-a="go" data-v="setup">One phone, pass it around</button>`
+          : `<button class="btn primary block" data-a="go" data-v="setup">${resumable ? 'New game' : 'Start a game'}</button>`}
         <button class="btn ghost block" data-a="go" data-v="rules">How to play</button>
         <p class="credit">Unofficial home version of Monikers by Alex Hague &amp; Justin Vickers. All ${CARDS.length} cards written fresh for this one.</p>
       </div>
@@ -830,9 +851,14 @@ function scoreTable() {
 
 function render() {
   const v = VIEWS[S.screen] || VIEWS.home;
+  // Views re-render whenever another phone acts, so keep the cursor where it was.
+  const a = document.activeElement, keep = a && a.id && a.tagName === 'INPUT' ? { id: a.id, s: a.selectionStart, e: a.selectionEnd } : null;
   $app.innerHTML = v();
+  if (keep) { const el = document.getElementById(keep.id); if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.e); } catch (e) {} } }
   renderOverlay();
   if (S.screen === 'turn') tickTimer(); else stopLoop();
+  if (S.screen === 'net' && N.view && N.view.phase === 'turn') { if (!netLoop) netLoop = setInterval(netTimer, 100); netTimer(); }
+  else if (netLoop) { clearInterval(netLoop); netLoop = null; }
 }
 
 /* ---------- Overlays ---------- */
@@ -841,7 +867,8 @@ function renderOverlay() {
   if (!overlay) { $ov.innerHTML = ''; return; }
   const g = G();
   let body = '';
-  if (overlay === 'menu') {
+  if (overlay.startsWith('net')) body = netOverlay();
+  else if (overlay === 'menu') {
     body = `<h3>Game menu</h3>
       ${g && g.phase === 'play' ? `<button class="btn block" data-a="ov" data-v="">Keep playing</button><button class="btn block" data-a="openScores">Scoreboard</button>` : `<button class="btn block" data-a="ov" data-v="">Keep going</button>`}
       <button class="btn block" data-a="go" data-v="rules-from-game">How to play</button>
@@ -1080,7 +1107,7 @@ document.addEventListener('click', e => {
   if (!ACT[a]) return;
   if (a === 'ovBackdrop' && e.target !== el) return;
   ACT[a](el.dataset.v, el, e);
-  if (S.game && S.screen !== 'home') S.game.screenBeforeHome = S.screen;
+  if (S.game && !['home', 'net', 'hostForm', 'joinForm', 'rules'].includes(S.screen)) S.game.screenBeforeHome = S.screen;
   save(); render();
 });
 document.addEventListener('input', e => {
@@ -1100,6 +1127,717 @@ document.addEventListener('keydown', e => {
   }
 });
 
+/* ---------- Multi-phone: the host's phone runs the game, everyone else joins by room code ---------- */
+const IN_ARTIFACT = !!window.claude || /claude|anthropic/.test(location.hostname);
+const NET_OK = typeof window.Peer === 'function' && !IN_ARTIFACT;
+const PEER_PREFIX = 'monikers-at-home-';
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+const NET_KEY = 'monikers-net-v1', HOST_KEY = 'monikers-host-v1', PID_KEY = 'monikers-pid', NAME_KEY = 'monikers-name';
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+function myPid() { let id = lsGet(PID_KEY); if (!id) { id = Math.random().toString(36).slice(2, 10); lsSet(PID_KEY, id); } return id; }
+const newCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
+const cleanName = s => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 16) || 'Player';
+const cleanCode = s => String(s || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+function peerOpts() {
+  // ?peer=host:port points at a self-hosted PeerServer; otherwise PeerJS's free cloud server is used.
+  const o = { debug: 1 };
+  const q = new URLSearchParams(location.search).get('peer');
+  if (q) { const [host, port] = q.split(':'); Object.assign(o, { host, port: +port || 9000, path: '/', secure: location.protocol === 'https:' }); }
+  return o;
+}
+const N = {
+  role: null, code: '', name: '', pid: myPid(), peer: null, conn: null, connecting: false, conns: new Map(),
+  status: 'idle', error: '', notice: '', view: null, H: null, joined: false,
+  endsAt: 0, lastPhase: null, picks: [], entries: [], form: { code: '', name: lsGet(NAME_KEY) || '' },
+};
+function setStatus(s) { if (N.status !== s) { N.status = s; if (S.screen === 'net') render(); } }
+
+/* Host state and rules */
+function newHostState(name) {
+  return {
+    code: N.code, hostPid: N.pid, phase: 'lobby',
+    settings: { teamsN: 2, teamNames: ['Team Blue', 'Team Gold', 'Team Pink', 'Team Teal'], mode: 'draft', deal: 8, keep: 5, seconds: 60, carry: true },
+    players: [{ pid: N.pid, name, team: 0, online: true, seen: Date.now() }], build: null, game: null,
+  };
+}
+const H = () => N.H;
+const hp = pid => H().players.find(p => p.pid === pid);
+const active = () => H().players.filter(p => !p.gone);
+const teamMembers = t => active().filter(p => p.team === t);
+function smallestTeam() {
+  const c = Array(H().settings.teamsN).fill(0);
+  active().forEach(p => { if (p.team < c.length) c[p.team]++; });
+  return c.indexOf(Math.min(...c));
+}
+function nextTeam(t) {
+  const n = H().settings.teamsN;
+  for (let k = 1; k <= n; k++) { const u = (t + k) % n; if (teamMembers(u).length) return u; }
+  return t;
+}
+function netNormalize() {
+  const st = H().settings, players = Math.max(1, active().length), md = Math.max(2, Math.floor(CARDS.length / players));
+  if (st.mode === 'draft') { st.keep = clamp(st.keep, 1, md - 1); st.deal = clamp(st.deal, st.keep + 1, md); }
+  else if (st.mode === 'custom') st.keep = clamp(st.keep, 1, 10);
+  else st.keep = clamp(st.keep, 1, Math.floor(CARDS.length / players));
+}
+function startProblem() {
+  const h = H(), n = h.settings.teamsN;
+  for (let t = 0; t < n; t++) if (teamMembers(t).length < 2) return `${h.settings.teamNames[t]} needs at least 2 players`;
+  return '';
+}
+function dealHand(b) { return b.pool.splice(0, H().settings.deal); }
+function startBuild() {
+  const h = H(), st = h.settings;
+  netNormalize();
+  if (st.mode === 'quick') { startNetGame(shuffle(CARDS).slice(0, active().length * st.keep)); return; }
+  h.build = { mode: st.mode, pool: shuffle(CARDS), deck: [], mine: {} };
+  active().forEach(p => { h.build.mine[p.pid] = st.mode === 'draft' ? { hand: dealHand(h.build), done: false } : { done: false }; });
+  h.phase = 'build';
+}
+function addToBuild(pid, cards) {
+  const b = H().build, m = b.mine[pid];
+  if (!m || m.done) return;
+  b.deck.push(...cards); m.done = true;
+  if (active().every(p => !b.mine[p.pid] || b.mine[p.pid].done)) finishBuild();
+}
+function finishBuild() {
+  const h = H(), b = h.build, st = h.settings;
+  const need = active().length * st.keep - b.deck.length;
+  if (b.mode === 'custom' && need > 0) b.deck.push(...shuffle(CARDS.filter(c => !b.deck.some(d => d.name === c.name))).slice(0, need));
+  startNetGame(b.deck.length ? b.deck : shuffle(CARDS).slice(0, 40));
+}
+function startNetGame(deck) {
+  const h = H(), n = h.settings.teamsN;
+  h.build = null;
+  h.game = { deck, pile: shuffle(deck.map((_, i) => i)), round: 1, team: teamMembers(0).length ? 0 : nextTeam(0),
+    scores: Array.from({ length: n }, () => [0, 0, 0]), carry: null, ptr: Array(n).fill(0), giver: null, turn: null };
+  h.phase = 'roundIntro';
+}
+function pickGiver(t) {
+  const g = H().game, list = teamMembers(t);
+  if (!list.length) return null;
+  for (let k = 0; k < list.length; k++) {
+    const i = (g.ptr[t] + k) % list.length;
+    if (list[i].online) { g.ptr[t] = i; return list[i].pid; }
+  }
+  return list[g.ptr[t] % list.length].pid;
+}
+function toReady() {
+  const g = H().game;
+  const c = g.carry;
+  g.giver = c && c.team === g.team && hp(c.giver) && !hp(c.giver).gone ? c.giver : pickGiver(g.team);
+  H().phase = 'ready';
+}
+let hostLastTap = 0;
+function hostAct(pid, a, v) {
+  const h = H(), g = h.game, st = h.settings, me = hp(pid);
+  if (!me) return;
+  const isHost = pid === h.hostPid;
+  const giverOrHost = g && (pid === g.giver || isHost);
+  const t = g && g.turn;
+  switch (a) {
+    case 'team': if (h.phase === 'lobby') me.team = clamp(+v, 0, st.teamsN - 1); break;
+    case 'leave':
+      if (h.phase === 'lobby') h.players = h.players.filter(p => p.pid !== pid);
+      else { me.gone = true; me.online = false; }
+      if (h.build && h.build.mine[pid] && !h.build.mine[pid].done) { delete h.build.mine[pid]; if (active().every(p => !h.build.mine[p.pid] || h.build.mine[p.pid].done)) finishBuild(); }
+      break;
+    case 'set': {
+      if (!isHost || h.phase !== 'lobby' || !v) return;
+      const { k } = v;
+      if (k === 'teamsN') { st.teamsN = clamp(+v.v, 2, 4); active().forEach(p => { if (p.team >= st.teamsN) p.team = smallestTeam(); }); }
+      else if (k === 'teamName') st.teamNames[clamp(+v.i, 0, 3)] = String(v.v || '').slice(0, 20);
+      else if (k === 'mode' && ['draft', 'quick', 'custom'].includes(v.v)) st.mode = v.v;
+      else if (k === 'deal') st.deal += Math.sign(+v.v);
+      else if (k === 'keep') st.keep += Math.sign(+v.v);
+      else if (k === 'seconds' && SECONDS.includes(+v.v)) st.seconds = +v.v;
+      else if (k === 'carry') st.carry = !st.carry;
+      if (k === 'deal') { st.deal = Math.max(st.deal, st.keep + 1); }
+      if (k === 'keep' && st.mode === 'draft' && st.keep >= st.deal) st.deal = st.keep + 1;
+      netNormalize();
+      break;
+    }
+    case 'move': if (isHost && h.phase === 'lobby') { const p = hp(v); if (p) p.team = (p.team + 1) % st.teamsN; } break;
+    case 'kick':
+      if (isHost && h.phase === 'lobby' && v !== h.hostPid) {
+        const c = N.conns.get(v); if (c) { try { c.send({ t: 'kicked' }); } catch (e) {} }
+        h.players = h.players.filter(p => p.pid !== v);
+      }
+      break;
+    case 'start': if (isHost && h.phase === 'lobby' && !startProblem()) startBuild(); break;
+    case 'draft': {
+      const b = h.build, m = b && b.mine[pid];
+      if (h.phase !== 'build' || !m || m.done || !m.hand || !Array.isArray(v)) return;
+      const idx = [...new Set(v.map(Number))].filter(i => i >= 0 && i < m.hand.length).slice(0, st.keep);
+      if (idx.length !== Math.min(st.keep, m.hand.length)) return;
+      addToBuild(pid, idx.map(i => m.hand[i]));
+      break;
+    }
+    case 'custom': {
+      const b = h.build, m = b && b.mine[pid];
+      if (h.phase !== 'build' || !m || m.done || !Array.isArray(v)) return;
+      const names = v.map(x => String(x || '').trim().slice(0, 60)).filter(Boolean).slice(0, st.keep);
+      const fill = shuffle(CARDS).slice(0, st.keep - names.length);
+      addToBuild(pid, [...names.map(n => ({ pts: 1, name: n, desc: `Written by ${me.name}`, custom: true })), ...fill]);
+      break;
+    }
+    case 'forceBuild':
+      if (!isHost || h.phase !== 'build') return;
+      active().forEach(p => {
+        const m = h.build.mine[p.pid];
+        if (m && !m.done) { h.build.deck.push(...(m.hand ? m.hand.slice(0, st.keep) : shuffle(CARDS).slice(0, st.keep))); m.done = true; }
+      });
+      finishBuild();
+      break;
+    case 'toReady': if (h.phase === 'roundIntro') toReady(); break;
+    case 'skipGiver':
+      if (!isHost || h.phase !== 'ready') return;
+      if (g.carry && g.carry.giver === g.giver) g.carry.giver = null;
+      g.ptr[g.team]++; g.giver = pickGiver(g.team);
+      break;
+    case 'startTurn': {
+      if (h.phase !== 'ready' || pid !== g.giver) return;
+      const secs = g.carry && g.carry.team === g.team ? g.carry.secs : st.seconds;
+      g.carry = null;
+      g.turn = { total: secs * 1000, remaining: secs * 1000, endsAt: Date.now() + secs * 1000, running: true, got: [] };
+      h.phase = 'turn';
+      break;
+    }
+    case 'got': case 'skip': {
+      if (h.phase !== 'turn' || pid !== g.giver || !t.running || !g.pile.length) return;
+      const now = Date.now(); if (now - hostLastTap < 250) return; hostLastTap = now;
+      if (a === 'skip') { g.pile.push(g.pile.shift()); break; }
+      t.got.push({ i: g.pile.shift() });
+      if (!g.pile.length) {
+        t.running = false; t.remaining = Math.max(0, t.endsAt - now);
+        const left = Math.floor(t.remaining / 1000);
+        if (st.carry && g.round < 3 && left >= 3) g.carry = { team: g.team, secs: left, giver: g.giver };
+        h.phase = 'review';
+      }
+      break;
+    }
+    case 'pause': if (h.phase === 'turn' && giverOrHost && t.running) { t.remaining = Math.max(0, t.endsAt - Date.now()); t.running = false; } break;
+    case 'resume': if (h.phase === 'turn' && giverOrHost && !t.running && t.remaining > 0) { t.endsAt = Date.now() + t.remaining; t.running = true; } break;
+    case 'endEarly': if (h.phase === 'turn' && giverOrHost && !t.running) h.phase = 'review'; break;
+    case 'lastCard':
+      if (h.phase !== 'timeup' || !giverOrHost) return;
+      if (v === '1' && g.pile.length) t.got.push({ i: g.pile.shift() });
+      h.phase = 'review';
+      break;
+    case 'undo': if (h.phase === 'review' && giverOrHost && t.got[+v]) t.got[+v].undo = !t.got[+v].undo; break;
+    case 'confirm': {
+      if (h.phase !== 'review' || !giverOrHost) return;
+      let pts = 0; const back = [];
+      t.got.forEach(x => { if (x.undo) back.push(x.i); else pts += g.deck[x.i].pts; });
+      g.scores[g.team][g.round - 1] += pts;
+      if (back.length) { g.pile = shuffle(g.pile.concat(back)); g.carry = null; }
+      g.turn = null;
+      if (!g.carry) g.ptr[g.team]++;
+      if (!g.pile.length) h.phase = g.round >= 3 ? 'over' : 'roundEnd';
+      else { g.team = nextTeam(g.team); toReady(); }
+      break;
+    }
+    case 'nextRound':
+      if (h.phase !== 'roundEnd') return;
+      g.round++; g.pile = shuffle(g.deck.map((_, i) => i));
+      g.team = g.carry ? g.carry.team : nextTeam(g.team);
+      h.phase = 'roundIntro';
+      break;
+    case 'again':
+      if (!isHost || h.phase !== 'over') return;
+      h.players = active(); h.game = null; h.build = null; h.phase = 'lobby';
+      break;
+    default: return;
+  }
+  broadcast();
+}
+function hostTick() {
+  const h = H(); if (!h) return;
+  const g = h.game, t = g && g.turn;
+  if (h.phase === 'turn' && t && t.running && Date.now() >= t.endsAt) {
+    t.running = false; t.remaining = 0;
+    h.phase = g.pile.length ? 'timeup' : 'review';
+    broadcast();
+  }
+}
+function hostWatchPeers() {
+  const h = H(); if (!h) return;
+  let changed = false;
+  h.players.forEach(p => {
+    if (p.pid === h.hostPid) { if (!p.online) { p.online = true; changed = true; } return; }
+    const c = N.conns.get(p.pid);
+    const on = !!(c && c.open) && Date.now() - p.seen < 12000;
+    if (on !== !!p.online) { p.online = on; changed = true; }
+  });
+  if (changed) broadcast();
+}
+
+/* What one player's phone gets to see */
+function buildView(pid) {
+  const h = H(), g = h.game, me = hp(pid);
+  const v = {
+    code: h.code, phase: h.phase, hostPid: h.hostPid, me: pid, settings: h.settings,
+    teamNames: h.settings.teamNames.slice(0, h.settings.teamsN),
+    players: active().map(p => ({ pid: p.pid, name: p.name, team: p.team, online: !!p.online,
+      done: !!(h.build && h.build.mine[p.pid] && h.build.mine[p.pid].done), building: !!(h.build && h.build.mine[p.pid]) })),
+    problem: h.phase === 'lobby' ? startProblem() : '',
+  };
+  if (h.phase === 'lobby') { const n = Math.max(1, active().length); v.deckSize = n * h.settings.keep; v.maxDeal = Math.max(2, Math.floor(CARDS.length / n)); }
+  if (h.build) { const m = h.build.mine[pid]; v.build = { mode: h.build.mode, mine: m ? { hand: m.hand || null, done: m.done } : null }; }
+  if (g) {
+    Object.assign(v, { round: g.round, team: g.team, scores: g.scores, pileLeft: g.pile.length, deckSize: g.deck.length, giver: g.giver,
+      carry: g.carry ? { team: g.carry.team, secs: g.carry.secs } : null });
+    if (h.phase === 'roundEnd') v.nextTeam = g.carry ? g.carry.team : nextTeam(g.team);
+    const t = g.turn;
+    if (t) {
+      v.turn = { total: t.total, remaining: t.running ? Math.max(0, t.endsAt - Date.now()) : t.remaining, running: t.running,
+        gotCount: t.got.filter(x => !x.undo).length,
+        got: ['review', 'timeup'].includes(h.phase) ? t.got.map(x => ({ name: g.deck[x.i].name, pts: g.deck[x.i].pts, undo: !!x.undo })) : [] };
+      const watching = me && me.team !== g.team;
+      if (['turn', 'timeup'].includes(h.phase) && g.pile.length && (pid === g.giver || watching)) v.card = g.deck[g.pile[0]];
+    }
+  }
+  return v;
+}
+function broadcast() {
+  const h = H(); if (!h) return;
+  for (const [pid, c] of N.conns) { if (c.open) { try { c.send({ t: 'view', v: buildView(pid) }); } catch (e) {} } }
+  lsSet(HOST_KEY, JSON.stringify(h));
+  applyView(buildView(N.pid));
+}
+
+/* Every phone, host included, renders from a view */
+function applyView(v) {
+  const prev = N.lastPhase;
+  N.view = v; N.lastPhase = v.phase;
+  if (v.turn) N.endsAt = Date.now() + v.turn.remaining;
+  if (v.phase !== 'build') { N.picks = []; N.entries = []; }
+  if (prev && prev !== v.phase) {
+    if (v.phase === 'turn' && prev === 'ready') { beep(660, 0.12, 0.15); }
+    if (v.phase === 'timeup' || (v.phase === 'review' && prev === 'turn' && v.turn && v.turn.remaining <= 0)) { beep(220, 0.6, 0.25, 'sawtooth'); buzz([200, 80, 200]); }
+    else if (v.phase === 'review' && prev === 'turn') { beep(988, 0.12, 0.15); setTimeout(() => beep(1318, 0.2, 0.15), 120); }
+    if (v.phase === 'ready' && v.giver === N.pid) buzz([60, 60, 60]);
+  }
+  if (S.screen === 'net') render();
+}
+
+/* Networking */
+function hostOpen(fresh) {
+  if (N.peer && !N.peer.destroyed) return;
+  setStatus('connecting');
+  const peer = new Peer(PEER_PREFIX + N.code.toLowerCase(), peerOpts());
+  N.peer = peer;
+  peer.on('open', () => { setStatus('online'); broadcast(); });
+  peer.on('connection', conn => {
+    conn.on('data', msg => hostOnData(conn, msg));
+    conn.on('close', () => { if (conn.pid && N.conns.get(conn.pid) === conn) { N.conns.delete(conn.pid); hostWatchPeers(); } });
+  });
+  peer.on('disconnected', () => setStatus('lost'));
+  peer.on('error', err => {
+    if (err.type === 'unavailable-id') {
+      peer.destroy(); N.peer = null;
+      if (fresh) { N.code = newCode(); H().code = N.code; saveNet(); hostOpen(true); }
+      else setStatus('reclaiming');
+    } else if (peer.destroyed || peer.disconnected) setStatus('lost');
+  });
+}
+function hostOnData(conn, msg) {
+  if (!msg || typeof msg !== 'object' || !H()) return;
+  if (msg.t === 'hello') {
+    const pid = String(msg.pid || '').slice(0, 20); if (!pid || pid === H().hostPid) return;
+    conn.pid = pid; N.conns.set(pid, conn);
+    let p = hp(pid);
+    if (!p || p.gone) {
+      if (p) H().players = H().players.filter(x => x.pid !== pid);
+      p = { pid, name: cleanName(msg.name), team: smallestTeam(), online: true, seen: Date.now() };
+      H().players.push(p);
+      const b = H().build;
+      if (b && !b.mine[pid]) b.mine[pid] = b.mode === 'draft' ? (b.pool.length >= H().settings.deal ? { hand: dealHand(b), done: false } : { hand: null, done: true }) : { done: false };
+    } else p.name = cleanName(msg.name);
+    p.online = true; p.seen = Date.now();
+    broadcast();
+    return;
+  }
+  const p = conn.pid && hp(conn.pid);
+  if (!p) return;
+  p.seen = Date.now();
+  if (!p.online) { p.online = true; broadcast(); }
+  if (msg.t === 'act') hostAct(conn.pid, String(msg.a), msg.v);
+}
+function clientOpen() {
+  if (N.peer && !N.peer.destroyed) return;
+  setStatus('connecting');
+  const peer = new Peer(peerOpts());
+  N.peer = peer;
+  peer.on('open', () => clientConnect());
+  peer.on('disconnected', () => { if (!(N.conn && N.conn.open)) setStatus('lost'); });
+  peer.on('error', err => {
+    if (err.type === 'peer-unavailable') {
+      N.connecting = false;
+      if (!N.joined) { netReset(); N.error = `No game found with code ${N.form.code}. Check the code with the host.`; S.screen = 'joinForm'; render(); }
+      else setStatus('waitingHost');
+    } else if (peer.destroyed || peer.disconnected) setStatus('lost');
+  });
+}
+function clientConnect() {
+  if (!N.peer || !N.peer.open || N.connecting || (N.conn && N.conn.open)) return;
+  N.connecting = true;
+  const conn = N.peer.connect(PEER_PREFIX + N.code.toLowerCase(), { serialization: 'json', reliable: true });
+  N.conn = conn;
+  const giveUp = setTimeout(() => { if (!conn.open) { N.connecting = false; try { conn.close(); } catch (e) {} } }, 10000);
+  conn.on('open', () => { clearTimeout(giveUp); N.connecting = false; N.joined = true; saveNet(); setStatus('online'); conn.send({ t: 'hello', pid: N.pid, name: N.name }); });
+  conn.on('data', msg => {
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.t === 'view') applyView(msg.v);
+    if (msg.t === 'kicked' || msg.t === 'ended') { netReset(); N.notice = msg.t === 'kicked' ? 'The host removed you from the game.' : 'The host ended the game.'; S.screen = 'home'; render(); }
+  });
+  conn.on('close', () => { clearTimeout(giveUp); N.connecting = false; if (N.conn === conn) { N.conn = null; setStatus('lost'); } });
+  conn.on('error', () => { N.connecting = false; });
+}
+function send(a, v) {
+  if (N.role === 'host') { hostAct(N.pid, a, v); return; }
+  if (N.conn && N.conn.open) { try { N.conn.send({ t: 'act', a, v }); } catch (e) {} }
+}
+// Phones drop connections when they sleep, so keep nudging everything back to life.
+setInterval(() => {
+  if (!N.role) return;
+  if (!N.peer || N.peer.destroyed) { N.peer = null; N.role === 'host' ? hostOpen(false) : clientOpen(); return; }
+  if (N.peer.disconnected) { try { N.peer.reconnect(); } catch (e) {} return; }
+  if (N.role === 'host') { hostWatchPeers(); if (N.peer.open) setStatus('online'); }
+  else if (N.conn && N.conn.open) { try { N.conn.send({ t: 'ping' }); } catch (e) {} }
+  else clientConnect();
+}, 2500);
+setInterval(() => { if (N.role === 'host') hostTick(); }, 200);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !N.role) return;
+  if (S.screen === 'net') holdWake();
+  if (N.role === 'client' && N.peer && N.peer.open && !(N.conn && N.conn.open)) clientConnect();
+});
+
+function saveNet() { lsSet(NET_KEY, JSON.stringify({ role: N.role, code: N.code, name: N.name })); }
+function netReset() {
+  try { N.conn && N.conn.close(); } catch (e) {}
+  try { N.peer && N.peer.destroy(); } catch (e) {}
+  Object.assign(N, { role: null, code: '', peer: null, conn: null, connecting: false, conns: new Map(), status: 'idle', error: '', view: null, H: null, joined: false, lastPhase: null, picks: [], entries: [] });
+  lsSet(NET_KEY, null); lsSet(HOST_KEY, null);
+  dropWake();
+}
+function netResume() {
+  let saved = null; try { saved = JSON.parse(lsGet(NET_KEY) || 'null'); } catch (e) {}
+  if (!saved || !NET_OK) return false;
+  N.role = saved.role; N.code = saved.code; N.name = saved.name;
+  if (N.role === 'host') {
+    try { N.H = JSON.parse(lsGet(HOST_KEY) || 'null'); } catch (e) { N.H = null; }
+    if (!N.H) { netReset(); return false; }
+    N.H.players.forEach(p => { if (p.pid !== N.pid) p.online = false; });
+    applyView(buildView(N.pid));
+    hostOpen(false);
+  } else { N.joined = true; clientOpen(); }
+  S.screen = 'net';
+  return true;
+}
+
+/* Net screens */
+const meP = v => v.players.find(p => p.pid === v.me) || { team: -1, name: '' };
+const nameOf = (v, pid) => (v.players.find(p => p.pid === pid) || { name: 'Someone' }).name;
+const isHostV = v => v.me === v.hostPid;
+const netTeamPill = (v, i) => `<span class="pill"><span class="teamdot" style="background:${teamColor(i)}"></span>${esc(v.teamNames[i])}</span>`;
+function netTop(title) {
+  const st = N.status;
+  const dot = st === 'online' ? '' : `<span class="netstatus" role="status">${st === 'reclaiming' ? 'Reopening room…' : st === 'waitingHost' ? 'Waiting for host…' : 'Reconnecting…'}</span>`;
+  return `<div class="topbar"><button class="iconbtn" data-a="ov" data-v="netMenu" aria-label="Game menu">⋯</button><div class="title">${esc(title)}</div><span class="roomtag">${esc(N.code)}</span></div>${dot}`;
+}
+function netScoreTable(v) {
+  const tot = v.scores.map(r => r.reduce((a, b) => a + b, 0));
+  return `<div class="tablewrap"><table class="scoretable"><thead><tr><th>Team</th><th>R1</th><th>R2</th><th>R3</th><th>Total</th></tr></thead><tbody>
+    ${v.teamNames.map((n, i) => `<tr><td><span class="tn"><span class="teamdot" style="background:${teamColor(i)}"></span>${esc(n)}</span></td>
+      ${v.scores[i].map((s, r) => `<td>${r < v.round || v.phase === 'over' || s ? s : '–'}</td>`).join('')}<td class="total">${tot[i]}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+function inviteLink() { return `${location.origin}${location.pathname}?room=${N.code}`; }
+
+const NETVIEWS = {
+  lobby(v) {
+    const host = isHostV(v), st = v.settings, me = meP(v);
+    const teams = v.teamNames.map((n, t) => {
+      const ps = v.players.filter(p => p.team === t);
+      return `<div class="panel teampanel" style="--tc:${teamColor(t)}">
+        <div class="row"><span class="teamdot" style="background:${teamColor(t)};width:18px;height:18px"></span>
+          ${host ? `<input type="text" id="tn-${t}" data-in="netTeam" data-v="${t}" value="${esc(n)}" maxlength="20" aria-label="Team ${t + 1} name" autocomplete="off">` : `<h3 class="grow">${esc(n)}</h3>`}
+          <span class="muted small" style="flex:none">${ps.length}</span></div>
+        <div class="chips">${ps.map(p => `<span class="pchip ${p.online ? '' : 'off'}">
+            ${host && p.pid !== v.me ? `<button data-a="netSend" data-v="move" data-x="${esc(p.pid)}" aria-label="Move ${esc(p.name)} to the next team">${esc(p.name)} ⇄</button>` : `<span>${esc(p.name)}${p.pid === v.me ? ' (you)' : ''}${p.pid === v.hostPid ? ' ★' : ''}</span>`}
+            ${host && p.pid !== v.me ? `<button class="x" data-a="netSend" data-v="kick" data-x="${esc(p.pid)}" aria-label="Remove ${esc(p.name)}">×</button>` : ''}
+          </span>`).join('') || '<span class="muted small">Nobody yet</span>'}</div>
+        ${me.team !== t ? `<button class="btn ghost" style="min-height:36px;font-size:14px;align-self:flex-start;padding:0 4px" data-a="netSend" data-v="team" data-x="${t}">Join ${esc(n)}</button>` : ''}
+      </div>`;
+    }).join('');
+    const settings = host ? `<div class="panel">
+        <div class="setrow"><span class="label">Teams</span><div class="stepper"><button data-a="netSet" data-v="teamsN" data-x="${st.teamsN - 1}" aria-label="Fewer teams">−</button><output>${st.teamsN}</output><button data-a="netSet" data-v="teamsN" data-x="${st.teamsN + 1}" aria-label="More teams">+</button></div></div>
+        <div class="field"><span class="label">Deck</span><div class="seg" role="group" aria-label="How to build the deck">
+          ${[['draft', 'Draft'], ['quick', 'Quick deal'], ['custom', 'Write own']].map(([k, l]) => `<button data-a="netSet" data-v="mode" data-x="${k}" aria-pressed="${st.mode === k}">${l}</button>`).join('')}</div>
+          <p class="hint">${st.mode === 'draft' ? 'Everyone drafts on their own phone at the same time.' : st.mode === 'quick' ? 'The app deals a random deck.' : 'Everyone types their own names on their phone.'}</p></div>
+        ${st.mode === 'draft' ? `<div class="setrow"><span class="label">Cards dealt each</span><div class="stepper"><button data-a="netSet" data-v="deal" data-x="-1" aria-label="Deal fewer">−</button><output>${st.deal}</output><button data-a="netSet" data-v="deal" data-x="1" aria-label="Deal more">+</button></div></div>` : ''}
+        <div class="setrow"><span class="label">${st.mode === 'draft' ? 'Cards kept each' : st.mode === 'custom' ? 'Names each' : 'Cards per player'}</span><div class="stepper"><button data-a="netSet" data-v="keep" data-x="-1" aria-label="Fewer">−</button><output>${st.keep}</output><button data-a="netSet" data-v="keep" data-x="1" aria-label="More">+</button></div></div>
+        <p class="hint">Deck: <b>${v.deckSize} cards</b> with ${plural(v.players.length, 'player')}. Around 40 to 50 plays best.</p>
+        <div class="field"><span class="label">Seconds per turn</span><div class="seg" role="group" aria-label="Seconds per turn">${SECONDS.map(s => `<button data-a="netSet" data-v="seconds" data-x="${s}" aria-pressed="${st.seconds === s}">${s}</button>`).join('')}</div></div>
+        <div class="setrow"><div><div class="label">Carry over leftover time</div><p class="hint">Clear the deck early and keep your remaining seconds.</p></div><button class="toggle" data-a="netSet" data-v="carry" aria-pressed="${st.carry}" aria-label="Carry over leftover time"></button></div>
+      </div>` : `<p class="muted small">${esc(nameOf(v, v.hostPid))} is setting up: ${st.mode === 'draft' ? `draft ${st.keep} of ${st.deal} cards each` : st.mode === 'custom' ? `write ${st.keep} names each` : 'quick deal'}, ${st.seconds}s turns.</p>`;
+    return `<div class="screen">${netTop('Lobby')}
+      <div class="scroll">
+        <div class="codehero"><p class="eyebrow">Room code</p><div class="roomcode">${esc(v.code)}</div>
+          <p class="muted small">Friends open this site, tap <b>Join a game</b>, and enter the code.</p>
+          <button class="btn ghost" style="min-height:36px;font-size:15px" data-a="copyInvite">Copy invite link</button></div>
+        ${teams}
+        ${settings}
+      </div>
+      <div class="footer">${host ? `${v.problem ? `<p class="hint" style="text-align:center">${esc(v.problem)}.</p>` : ''}<button class="btn primary block" data-a="netSend" data-v="start" ${v.problem ? 'disabled' : ''}>Start game</button>`
+        : `<p class="muted" style="text-align:center">Waiting for ${esc(nameOf(v, v.hostPid))} to start…</p>`}</div>
+    </div>`;
+  },
+
+  build(v) {
+    const st = v.settings, b = v.build, mine = b && b.mine;
+    const waiting = v.players.filter(p => p.building && !p.done);
+    if (!mine || mine.done || (b.mode === 'draft' && !mine.hand)) {
+      return `<div class="screen">${netTop('Building the deck')}
+        <div class="pass"><p class="eyebrow">${mine && mine.done ? 'Locked in' : 'Hang tight'}</p><div class="big">Waiting</div>
+          <p class="muted">${waiting.length ? `Still choosing: ${waiting.map(p => esc(p.name)).join(', ')}` : 'Almost there…'}</p></div>
+        <div class="footer">${isHostV(v) && waiting.length ? `<button class="btn block" data-a="netSend" data-v="forceBuild">Start without waiting</button><p class="hint" style="text-align:center">Anyone still choosing gets cards picked for them.</p>` : ''}</div></div>`;
+    }
+    if (b.mode === 'draft') {
+      const n = N.picks.length;
+      return `<div class="screen">${netTop('Draft')}
+        <div class="row"><p class="grow"><b>Keep ${st.keep}.</b> <span class="muted small">Tap to choose. Keep them secret.</span></p><span class="counter">${n} / ${st.keep}</span></div>
+        <div class="scroll"><div class="draft-grid">
+          ${mine.hand.map((c, i) => `<button class="dcard" data-a="netPick" data-v="${i}" aria-pressed="${N.picks.includes(i)}" style="--pc:${ptsColor(c.pts)}"><i>${c.pts}</i><b>${esc(c.name)}</b><span>${esc(c.desc)}</span></button>`).join('')}
+        </div></div>
+        <div class="footer"><button class="btn primary block" data-a="netDraftDone" ${n === st.keep ? '' : 'disabled'}>${n === st.keep ? 'Lock in' : `Pick ${st.keep - n} more`}</button></div></div>`;
+    }
+    if (N.entries.length !== st.keep) N.entries = Array.from({ length: st.keep }, (_, i) => N.entries[i] || '');
+    return `<div class="screen">${netTop('Write names')}
+      <p>Write ${st.keep} names everyone could plausibly guess: people, characters, things.</p>
+      <div class="scroll"><div class="custom-list">
+        ${N.entries.map((x, i) => `<input type="text" id="name-${i}" data-in="netName" data-v="${i}" value="${esc(x)}" maxlength="60" placeholder="Name ${i + 1}" autocomplete="off" autocapitalize="words">`).join('')}
+      </div><p class="hint">Blank lines get a random card instead.</p></div>
+      <div class="footer"><button class="btn primary block" data-a="netCustomDone">Lock in</button></div></div>`;
+  },
+
+  roundIntro(v) {
+    const r = ROUNDS[v.round - 1];
+    return `<div class="screen">${netTop(`Round ${v.round} of 3`)}
+      <div class="pass"><p class="eyebrow">Round ${v.round} of 3 · ${plural(v.deckSize, 'card')}</p><div class="big">${r.short}</div>
+        <div class="rule-card"><div class="num">${v.round}</div><div><p>${r.rule}</p>${v.round > 1 ? '<p class="muted small" style="margin-top:6px">Same cards as last round, reshuffled.</p>' : ''}</div></div></div>
+      <div class="footer"><button class="btn primary block" data-a="netSend" data-v="toReady">Let's go</button></div></div>`;
+  },
+
+  ready(v) {
+    const me = meP(v), r = ROUNDS[v.round - 1], giver = nameOf(v, v.giver);
+    const secs = v.carry && v.carry.team === v.team ? v.carry.secs : v.settings.seconds;
+    const giverOnline = (v.players.find(p => p.pid === v.giver) || {}).online;
+    let body, foot = '';
+    if (v.giver === v.me) {
+      body = `<p class="eyebrow">Your turn to give clues</p><div class="big">You're up!</div>
+        <p class="muted">${secs} seconds${v.carry && v.carry.team === v.team ? ' (leftover time)' : ''} · ${plural(v.pileLeft, 'card')} left</p>`;
+      foot = `<button class="btn sun block" style="min-height:64px;font-size:22px" data-a="netSend" data-v="startTurn">Start turn</button>`;
+    } else if (me.team === v.team) {
+      body = `<p class="eyebrow">Get ready to guess</p><div class="big">${esc(giver)}</div><p class="muted">is giving your team clues. ${secs} seconds.</p>`;
+    } else {
+      body = `<p class="eyebrow">${esc(v.teamNames[v.team])} is up</p><div class="big">${esc(giver)}</div><p class="muted">is giving clues. You'll see their cards, so keep them honest.</p>`;
+    }
+    if (isHostV(v) && v.giver !== v.me) foot += `<button class="btn ghost block" data-a="netSend" data-v="skipGiver">${giverOnline ? `Skip ${esc(giver)}, pick next player` : `${esc(giver)} is offline. Skip them`}</button>`;
+    return `<div class="screen">${netTop(`Round ${v.round} · ${r.short}`)}
+      <div class="row">${netTeamPill(v, v.team)}<span class="grow"></span></div>
+      <div class="pass">${body}<div class="rule-card"><div class="num">${v.round}</div><div><h3>${r.short}</h3><p class="muted">${r.rule}</p></div></div></div>
+      <div class="footer">${foot}</div></div>`;
+  },
+
+  turn(v) {
+    const me = meP(v), giving = v.giver === v.me, t = v.turn;
+    const timer = `<div class="timer" id="timer" style="--tc:${teamColor(v.team)}"><div class="fill" id="tfill"></div><span class="num" id="tnum">${Math.ceil(t.remaining / 1000)}</span></div>`;
+    const head = `<div class="turn-head">${netTeamPill(v, v.team)}<span class="grow muted small" style="font-weight:700;text-align:right">R${v.round} · ${ROUNDS[v.round - 1].short}</span>
+      ${giving || isHostV(v) ? `<button class="iconbtn" data-a="netSend" data-v="${t.running ? 'pause' : 'resume'}" aria-label="${t.running ? 'Pause' : 'Resume'}">${t.running ? '❚❚' : '▶'}</button>` : ''}</div>`;
+    const paused = !t.running ? `<div class="panel" style="text-align:center"><h3>Paused</h3><p class="muted">${Math.ceil(t.remaining / 1000)} seconds left.</p>
+      ${giving || isHostV(v) ? `<div class="row"><button class="btn grow" data-a="netSend" data-v="endEarly">End turn</button><button class="btn primary grow" data-a="netSend" data-v="resume">Resume</button></div>` : ''}</div>` : '';
+    if (giving) {
+      return `<div class="screen">${head}${timer}
+        <div class="stage">${t.running && v.card ? cardHTML(v.card, 'enter') : paused}</div>
+        <div class="turn-meta"><span>${plural(t.gotCount, 'card')} this turn</span><span>${v.pileLeft} left</span></div>
+        <div class="turn-actions"><button class="btn" data-a="netSend" data-v="skip" ${t.running ? '' : 'disabled'}>Skip</button><button class="btn got" data-a="netSend" data-v="got" ${t.running ? '' : 'disabled'}>Got it</button></div></div>`;
+    }
+    if (me.team === v.team) {
+      return `<div class="screen">${head}${timer}
+        <div class="pass">${t.running ? `<div class="guessbig">Guess!</div><p class="muted">${esc(nameOf(v, v.giver))} is giving clues</p>` : paused}
+          <div class="bigscore">${t.gotCount}</div><p class="muted small">cards so far · ${v.pileLeft} left</p></div></div>`;
+    }
+    return `<div class="screen">${head}${timer}
+      <p class="eyebrow" style="text-align:center">Watching ${esc(nameOf(v, v.giver))}'s card</p>
+      <div class="stage">${t.running && v.card ? cardHTML(v.card) : paused}</div>
+      <div class="turn-meta"><span>${plural(t.gotCount, 'card')} this turn</span><span>${v.pileLeft} left</span></div></div>`;
+  },
+
+  timeup(v) {
+    const fallback = isHostV(v) && !(v.players.find(p => p.pid === v.giver) || {}).online;
+    if (v.giver === v.me || fallback) {
+      const c = v.card;
+      return `<div class="screen">${netTop("Time's up")}
+        <div class="pass"><p class="eyebrow">Time's up</p><div class="big">Did they get it?</div>
+          ${c ? `<div class="li" style="width:100%"><span class="chip" style="--pc:${ptsColor(c.pts)}">${c.pts}</span><span class="nm">${esc(c.name)}</span></div>` : ''}</div>
+        <div class="footer"><div class="row"><button class="btn grow" data-a="netSend" data-v="lastCard" data-x="0">No</button><button class="btn got grow" data-a="netSend" data-v="lastCard" data-x="1">Yes, count it</button></div></div></div>`;
+    }
+    return `<div class="screen">${netTop("Time's up")}<div class="pass"><div class="big">Time's up!</div><p class="muted">${esc(nameOf(v, v.giver))} is checking the last card.</p></div></div>`;
+  },
+
+  review(v) {
+    const t = v.turn, can = v.giver === v.me || isHostV(v);
+    const pts = t.got.filter(x => !x.undo).reduce((s, x) => s + x.pts, 0);
+    return `<div class="screen">${netTop('Turn over')}
+      <div class="row">${netTeamPill(v, v.team)}<span class="grow"></span></div>
+      <div><div class="bigscore">+${pts}</div><p class="muted">${t.got.length ? `${esc(nameOf(v, v.giver))} got ${plural(t.got.filter(x => !x.undo).length, 'card')}` : 'No cards this turn. It happens.'}</p></div>
+      <div class="scroll"><div class="list">
+        ${t.got.map((x, k) => `<div class="li ${x.undo ? 'off' : ''}"><span class="chip" style="--pc:${ptsColor(x.pts)}">${x.pts}</span><span class="nm">${esc(x.name)}</span>
+          ${can ? `<button class="small-btn" data-a="netSend" data-v="undo" data-x="${k}">${x.undo ? 'Count it' : 'Undo'}</button>` : ''}</div>`).join('')}
+      </div></div>
+      <div class="footer">${can ? `<button class="btn primary block" data-a="netSend" data-v="confirm">${v.pileLeft === 0 && t.got.every(x => !x.undo) ? (v.round < 3 ? 'End round' : 'See final scores') : 'Next team'}</button>`
+        : `<p class="muted" style="text-align:center">Waiting for ${esc(nameOf(v, v.giver))} to confirm…</p>`}</div></div>`;
+  },
+
+  roundEnd(v) {
+    const tot = v.scores.map(r => r.reduce((a, b) => a + b, 0)), best = Math.max(...tot);
+    const lead = tot.map((_, i) => i).filter(i => tot[i] === best);
+    const line = lead.length > 1 ? 'Dead even so far' : `${v.teamNames[lead[0]]} leads by ${best - Math.max(...tot.filter((_, i) => i !== lead[0]))}`;
+    return `<div class="screen">${netTop(`End of round ${v.round}`)}
+      <div class="scroll"><div><p class="eyebrow">Round ${v.round} done</p><h2>${esc(line)}</h2></div>${netScoreTable(v)}
+        <p class="muted">Up next: round ${v.round + 1}, <b>${ROUNDS[v.round].short}</b>. ${esc(v.teamNames[v.nextTeam])} goes first${v.carry ? ` with ${v.carry.secs} leftover seconds` : ''}.</p></div>
+      <div class="footer"><button class="btn primary block" data-a="netSend" data-v="nextRound">Start round ${v.round + 1}</button></div></div>`;
+  },
+
+  over(v) {
+    const tot = v.scores.map(r => r.reduce((a, b) => a + b, 0)), best = Math.max(...tot);
+    const win = tot.map((_, i) => i).filter(i => tot[i] === best);
+    return `<div class="screen">${netTop('Final scores')}
+      <div class="scroll"><div class="winner"><p class="eyebrow">Game over</p><div class="crown">${win.length > 1 ? 'It’s a tie!' : `${esc(v.teamNames[win[0]])} wins!`}</div>
+        <div class="row" style="justify-content:center;flex-wrap:wrap">${win.map(i => netTeamPill(v, i)).join('')}</div></div>${netScoreTable(v)}</div>
+      <div class="footer">${isHostV(v) ? `<button class="btn primary block" data-a="netSend" data-v="again">Play again, same room</button>` : `<p class="muted" style="text-align:center">${esc(nameOf(v, v.hostPid))} can start another game.</p>`}
+        <button class="btn ghost block" data-a="ov" data-v="netLeave">Leave</button></div></div>`;
+  },
+};
+
+VIEWS.net = () => {
+  const v = N.view;
+  if (!v) {
+    return `<div class="screen">${netTop('Joining')}<div class="pass"><p class="eyebrow">Room ${esc(N.code)}</p><div class="big">Connecting…</div>
+      <p class="muted">${N.status === 'waitingHost' ? "Can't reach the host's phone yet. Make sure the host still has the game open." : 'Finding the host’s phone.'}</p></div>
+      <div class="footer"><button class="btn ghost block" data-a="netLeaveNow">Cancel</button></div></div>`;
+  }
+  return (NETVIEWS[v.phase] || NETVIEWS.lobby)(v);
+};
+VIEWS.hostForm = () => `<div class="screen">${topbar('Host a game', 'home')}
+  <div class="scroll"><div class="panel"><div class="field"><label for="f-name">Your name</label>
+    <input type="text" id="f-name" data-in="form" data-v="name" value="${esc(N.form.name)}" maxlength="16" autocomplete="off" autocapitalize="words" placeholder="e.g. Danny"></div>
+    <p class="hint">Your phone runs the game, so keep this page open until it's over. Everyone else joins with a room code.</p></div>
+    ${N.error ? `<p class="hint" style="color:var(--bad)">${esc(N.error)}</p>` : ''}</div>
+  <div class="footer"><button class="btn primary block" data-a="netHost">Create room</button></div></div>`;
+VIEWS.joinForm = () => `<div class="screen">${topbar('Join a game', 'home')}
+  <div class="scroll"><div class="panel">
+    <div class="field"><label for="f-code">Room code</label>
+      <input type="text" id="f-code" class="codeinput" data-in="form" data-v="code" value="${esc(N.form.code)}" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></div>
+    <div class="field"><label for="f-name">Your name</label>
+      <input type="text" id="f-name" data-in="form" data-v="name" value="${esc(N.form.name)}" maxlength="16" autocomplete="off" autocapitalize="words" placeholder="e.g. Sam"></div></div>
+    ${N.error ? `<p class="hint" style="color:var(--bad)">${esc(N.error)}</p>` : ''}</div>
+  <div class="footer"><button class="btn primary block" data-a="netJoin">Join</button></div></div>`;
+
+function netOverlay() {
+  if (overlay === 'netMenu') {
+    const v = N.view, host = N.role === 'host';
+    return `<h3>Game menu</h3>
+      <button class="btn block" data-a="ov" data-v="">Keep playing</button>
+      ${v && v.scores ? `<button class="btn block" data-a="ov" data-v="netScores">Scoreboard</button>` : ''}
+      <button class="btn block" data-a="go" data-v="rules-from-game">How to play</button>
+      <button class="btn block" data-a="ov" data-v="netLeave" style="color:var(--bad)">${host ? 'End game for everyone' : 'Leave game'}</button>`;
+  }
+  if (overlay === 'netScores') return `<h3>Scoreboard</h3>${netScoreTable(N.view)}<button class="btn block" data-a="ov" data-v="">Close</button>`;
+  if (overlay === 'netLeave') {
+    const host = N.role === 'host';
+    return `<h3>${host ? 'End the game for everyone?' : 'Leave this game?'}</h3>
+      <p class="muted">${host ? 'Everyone gets sent back to the start screen.' : 'You can rejoin with the same code while the game is running.'}</p>
+      <button class="btn block" style="background:var(--bad);border-color:var(--bad);color:#fff" data-a="netLeaveNow">${host ? 'End game' : 'Leave'}</button>
+      <button class="btn ghost block" data-a="ov" data-v="">Cancel</button>`;
+  }
+  return '';
+}
+
+Object.assign(ACT, {
+  netHostForm() { N.error = ''; S.screen = 'hostForm'; },
+  netJoinForm() { N.error = ''; S.screen = 'joinForm'; },
+  netHost() {
+    const name = cleanName(N.form.name);
+    if (!N.form.name.trim()) { N.error = 'Add your name so friends know whose room this is.'; return; }
+    lsSet(NAME_KEY, name); audio();
+    netReset();
+    N.role = 'host'; N.name = name; N.code = newCode(); N.H = newHostState(name);
+    saveNet(); S.screen = 'net'; holdWake();
+    broadcast(); hostOpen(true);
+  },
+  netJoin() {
+    const code = cleanCode(N.form.code), name = cleanName(N.form.name);
+    if (code.length !== 4) { N.error = 'Room codes are 4 letters.'; return; }
+    if (!N.form.name.trim()) { N.error = 'Add your name so your team knows who you are.'; return; }
+    lsSet(NAME_KEY, name); audio();
+    netReset();
+    N.form.code = code; N.role = 'client'; N.name = name; N.code = code;
+    S.screen = 'net'; holdWake();
+    clientOpen();
+  },
+  netSend(v, el) {
+    audio();
+    const x = el && el.dataset.x;
+    send(v, x === undefined ? undefined : x);
+  },
+  netSet(v, el) { send('set', { k: v, v: el.dataset.x }); },
+  netPick(v) {
+    const i = +v, k = N.picks.indexOf(i);
+    if (k >= 0) N.picks.splice(k, 1); else if (N.picks.length < N.view.settings.keep) N.picks.push(i);
+  },
+  netDraftDone() { send('draft', N.picks.slice()); },
+  netCustomDone() { send('custom', N.entries.slice()); },
+  copyInvite(v, el) {
+    const link = inviteLink();
+    const done = () => { el.textContent = 'Link copied'; };
+    try {
+      if (navigator.share) { navigator.share({ title: 'Monikers at Home', text: `Join my Monikers game. Room code ${N.code}`, url: link }).catch(() => {}); return; }
+      navigator.clipboard.writeText(link).then(done, () => { el.textContent = link; });
+    } catch (e) { el.textContent = link; }
+  },
+  netLeaveNow() {
+    overlay = null;
+    if (N.role === 'host') { for (const c of N.conns.values()) { try { c.send({ t: 'ended' }); } catch (e) {} } }
+    else send('leave');
+    setTimeout(netReset, N.role === 'host' ? 300 : 150);
+    S.screen = 'home';
+  },
+});
+document.addEventListener('input', e => {
+  const el = e.target, k = el.dataset && el.dataset.in;
+  if (k === 'form') { N.form[el.dataset.v] = el.dataset.v === 'code' ? (el.value = cleanCode(el.value)) : el.value; N.error = ''; }
+  if (k === 'netName') N.entries[+el.dataset.v] = el.value;
+  if (k === 'netTeam') { clearTimeout(el._t); el._t = setTimeout(() => send('set', { k: 'teamName', i: +el.dataset.v, v: el.value }), 250); }
+});
+
+let netLoop = null, netLastBeep = null;
+function netTimer() {
+  const v = N.view; if (!v || !v.turn) return;
+  const rem = v.turn.running ? Math.max(0, N.endsAt - Date.now()) : v.turn.remaining;
+  const s = Math.ceil(rem / 1000);
+  if (v.turn.running && v.giver === v.me && s <= 5 && s > 0 && s !== netLastBeep) { netLastBeep = s; beep(880, 0.08, 0.12); }
+  const num = document.getElementById('tnum'), fill = document.getElementById('tfill'), box = document.getElementById('timer');
+  if (!num) return;
+  num.textContent = s;
+  fill.style.transform = `scaleX(${clamp(rem / v.turn.total, 0, 1)})`;
+  box.classList.toggle('low', s <= 10);
+}
+
 /* ---------- Boot ---------- */
 function start(data) {
   S = (data && data.screen) ? data : (load() || fresh());
@@ -1107,6 +1845,11 @@ function start(data) {
   // A reload mid-turn comes back paused so nobody loses time.
   if (S.screen === 'turn' && S.game && S.game.turn) { pauseState(); overlay = 'pause'; }
   if (S.game && S.game.phase === 'build' && !['draft', 'custom'].includes(S.screen)) S.game = null;
+  if (!netResume()) {
+    if (['net', 'hostForm', 'joinForm'].includes(S.screen)) S.screen = 'home';
+    const room = cleanCode(new URLSearchParams(location.search).get('room'));
+    if (room && NET_OK) { N.form.code = room; S.screen = 'joinForm'; }
+  }
   render();
 }
 try { window.claude?.hot?.snapshot?.(() => S); } catch (e) {}
